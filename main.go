@@ -1,43 +1,29 @@
 package main
 
-import (
-	"fmt"
-	"github.com/julienschmidt/httprouter"
-	"log"
-	"net/http"
-)
+import "log"
+import bolt "go.etcd.io/bbolt"
 
 const addr = "0.0.0.0:9191"
+const name = "node-9191"
+const dbpath = "bl.db"
+
+var mainBucket = []byte("pairs")
+var mainNode Node
 
 func main() {
-	r := httprouter.New()
-	r.POST("/:key", Store)
-	r.GET("/:key", Receive)
-	r.GET("/", Explore)
+	db, err := bolt.Open(dbpath, 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
 
-	log.Printf("Run server [%s]", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	mainNode = NewInternalNode(name, addr, 1, 1, db)
+	if err := RunServer(addr); err != nil {
 		panic(err)
 	}
 }
 
-func Store(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	key := ps.ByName("key")
-	if _, err := fmt.Fprintf(w, "Store: %s", key); err != nil {
-		panic(err)
-	}
-}
-
-func Receive(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	key := ps.ByName("key")
-	if _, err := fmt.Fprintf(w, "Receive: %s", key); err != nil {
-		panic(err)
-	}
-}
-
-func Explore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if _, err := fmt.Fprint(w, "Explore"); err != nil {
-		panic(err)
-	}
-
+//! STUB
+func GetNode(key string) Node {
+	return mainNode
 }
