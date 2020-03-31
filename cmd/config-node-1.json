@@ -1,0 +1,11 @@
+{
+  "Name": "Node-1",
+  "Address": "127.0.0.1:9192",
+  "Power": 1,
+  "Capacity":1,
+  "DBPath": "node1.db",
+  "Entrypoints": ["http://127.0.0.1:9191"],
+  "Curve": "Morton",
+  "Dimensions": 3,
+  "Size": 64
+}
