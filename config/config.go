@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Name        string
 	Address     string
+	RPCAddress  string
 	Power       float64
 	Capacity    float64
 	DBpath      string

@@ -6,6 +6,8 @@ import (
 	"errors"
 	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/node"
+	"github.com/struckoff/kvstore/proto"
+	"google.golang.org/grpc"
 	"log"
 	"net/http"
 	"strings"
@@ -13,45 +15,57 @@ import (
 
 // Host represents bounding of network api with balancer lib and local node
 type Host struct {
-	bal *balancer.Balancer
-	n *node.InternalNode
+	bal       *balancer.Balancer
+	n         *node.InternalNode
+	rpcserver *grpc.Server
 }
 
-func NewHost(n *node.InternalNode, bal *balancer.Balancer) (*Host, error) {
-	if err := bal.AddNode(n); err != nil{
+func NewHost(n *node.InternalNode, bal *balancer.Balancer, gs *grpc.Server) (*Host, error) {
+	if err := bal.AddNode(n); err != nil {
 		return nil, err
 	}
-	return &Host{bal, n}, nil
+	h := &Host{bal, n, gs}
+	proto.RegisterRPCListenerServer(gs, h)
+	return h, nil
 }
 
 // Lookup tries to connect to the remote node using addresses in the given list.
 // Function ends on first success.
 // If all attempts fail it will return an error.
-func (h *Host) Lookup(eps []string) error{
+func (h *Host) Lookup(eps []string) error {
 	for _, addr := range eps {
+		//conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		//if err != nil {
+		//	return err
+		//}
+		//c := proto.NewRPCListenerClient(conn)
+
 		p := strings.Join([]string{addr, "node"}, "/")
 		m := h.n.Meta()
 		buf := bytes.NewBuffer(nil)
-		if err := json.NewEncoder(buf).Encode(m); err != nil{
+		if err := json.NewEncoder(buf).Encode(m); err != nil {
 			log.Println("[ERROR]", err)
 			continue
 		}
-		r, err := http.Post(p,"application", buf )
-		if err != nil{
-			log.Println("[ERROR]",err)
+		r, err := http.Post(p, "application", buf)
+		if err != nil {
+			log.Println("[ERROR]", err)
 			continue
 		}
-		if r.StatusCode >= 400{
-			log.Println("[ERROR]",r.Status)
+		if r.StatusCode >= 400 {
+			log.Println("[ERROR]", r.Status)
 			continue
 		}
 		var metas []node.NodeMeta
-		if err := json.NewDecoder(r.Body).Decode(&metas); err != nil{
-			log.Println("[ERROR]",err)
+		if err := json.NewDecoder(r.Body).Decode(&metas); err != nil {
+			log.Println("[ERROR]", err)
 			continue
 		}
 		for _, meta := range metas {
-			en := node.NewExternalNode(meta)
+			en, err := node.NewExternalNode(meta)
+			if err != nil {
+				return err
+			}
 			if err := h.bal.AddNode(en); err != nil {
 				return err
 			}
@@ -68,7 +82,7 @@ func (h *Host) AddNode(n node.Node) error {
 
 // RemoveNode removes node from balancer
 func (h *Host) RemoveNode(id string) error {
-	return h.bal.RemoveNodeByID(id)
+	return h.bal.RemoveNode(id)
 }
 
 // Returns node from balancer by given key.

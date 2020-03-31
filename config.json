@@ -1,6 +1,7 @@
 {
   "Name": "MainNode",
   "Address": "127.0.0.1:9191",
+  "RPCAddress": "127.0.0.1:9291",
   "Power": 1,
   "Capacity":1,
   "DBPath": "mainNode.db",

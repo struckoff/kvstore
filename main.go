@@ -9,7 +9,9 @@ import (
 	"github.com/struckoff/kvstore/host"
 	"github.com/struckoff/kvstore/node"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"os"
 )
 
@@ -22,16 +24,16 @@ func main() {
 func run() error {
 	var conf config.Config
 	configP := "config.json"
-	if len(os.Args)>1{
+	if len(os.Args) > 1 {
 		configP = os.Args[1]
 	}
 	configFile, err := os.Open(configP)
-    defer configFile.Close()
-    if err != nil {
-       return err
-    }
-    if err := json.NewDecoder(configFile).Decode(&conf); err != nil{
-    	return err
+	defer configFile.Close()
+	if err != nil {
+		return err
+	}
+	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
+		return err
 	}
 
 	//Initialize database
@@ -48,21 +50,40 @@ func run() error {
 	}
 
 	//Initialize local node
-	mainNode := node.NewInternalNode(conf.Name, conf.Address, conf.Power, conf.Capacity, db)
-	h, err := host.NewHost(mainNode, bal)
+	mainNode := node.NewInternalNode(conf.Name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
+	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
+	if err != nil {
+		return err
+	}
+	inbound, err := net.ListenTCP("tcp", addy)
+	if err != nil {
+		return err
+	}
+	rpcServer := grpc.NewServer()
+	h, err := host.NewHost(mainNode, bal, rpcServer)
 	if err != nil {
 		return err
 	}
 
-	if len(conf.Entrypoints) > 0{
-		if err := h.Lookup(conf.Entrypoints); err != nil{
+	if len(conf.Entrypoints) > 0 {
+		if err := h.Lookup(conf.Entrypoints); err != nil {
 			return err
 		}
 	}
 
-	//Run API server
-	if err := h.RunServer(conf.Address); err != nil {
-		return err
-	}
-	return nil
+	//Run API servers
+	errCh := make(chan error)
+	go func(errCh chan error) {
+		if err := h.RunServer(conf.Address); err != nil {
+			errCh <- err
+			return
+		}
+	}(errCh)
+	go func(errCh chan error) {
+		if err := rpcServer.Serve(inbound); err != nil {
+			errCh <- err
+			return
+		}
+	}(errCh)
+	return <-errCh
 }

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package proto;
+
+message StoreReq {
+	string Key = 1;
+	bytes Value = 2;
+}
+
+message StoreRes {}
+
+message ReceiveReq {
+	string Key = 1;
+}
+
+message ReceiveRes {
+	string Key = 1;
+	bytes Value = 2;
+}
+
+message NodeMeta {
+	string ID = 1;
+	string Address = 2;
+	string RPCAddress = 3;
+	double Power = 4;
+	double Capacity = 5;
+}
+
+message NodeMetas {
+	repeated NodeMeta Metas = 1;
+}
+
+message ExploreReq {}
+
+message ExploreRes {
+	repeated string Keys = 1;
+}
+
+service RPCListener {
+	rpc RPCStore (StoreReq) returns (StoreRes);
+	rpc RPCReceive (ReceiveReq) returns (ReceiveRes);
+	rpc RPCExplore (ExploreReq) returns (ExploreRes);
+	rpc RPCRegister(NodeMeta) returns (NodeMetas);
+}
