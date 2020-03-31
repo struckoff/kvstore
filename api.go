@@ -101,16 +101,15 @@ func (h *Host) Register(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 	en := NewExternalNode(meta)
+	if err := h.AddNode(en); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	metas, err := h.nodes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := h.AddNode(en); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	if err := json.NewEncoder(w).Encode(metas); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
