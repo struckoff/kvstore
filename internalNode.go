@@ -1,4 +1,4 @@
-package node
+package kvstore
 
 import (
 	"github.com/pkg/errors"

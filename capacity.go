@@ -1,4 +1,4 @@
-package node
+package kvstore
 
 type Capacity struct {
 	c float64

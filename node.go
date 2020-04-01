@@ -1,13 +1,11 @@
-package node
+package kvstore
 
 import (
 	balancer "github.com/struckoff/SFCFramework"
 )
 
 type Node interface {
-	ID() string
-	Power() balancer.Power
-	Capacity() balancer.Capacity
+	balancer.Node
 	Store(key string, body []byte) error // Save value for a given key
 	Receive(key string) ([]byte, error)  // Return value for a given key
 	Explore() ([]string, error)          // Return all keys in a cluster

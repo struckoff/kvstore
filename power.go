@@ -1,4 +1,4 @@
-package node
+package kvstore
 
 type Power struct {
 	p float64

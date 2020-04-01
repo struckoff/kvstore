@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package rpcapi;
 
 message StoreReq {
 	string Key = 1;
@@ -17,6 +17,8 @@ message ReceiveRes {
 	string Key = 1;
 	bytes Value = 2;
 }
+
+message NodeMetaReq {}
 
 message NodeMeta {
 	string ID = 1;
@@ -40,5 +42,5 @@ service RPCListener {
 	rpc RPCStore (StoreReq) returns (StoreRes);
 	rpc RPCReceive (ReceiveReq) returns (ReceiveRes);
 	rpc RPCExplore (ExploreReq) returns (ExploreRes);
-	rpc RPCRegister(NodeMeta) returns (NodeMetas);
+	rpc RPCMeta(NodeMetaReq) returns (NodeMeta);
 }

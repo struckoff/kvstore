@@ -2,12 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/SFCFramework/optimizer"
-	"github.com/struckoff/SFCFramework/transform"
-	"github.com/struckoff/kvstore/config"
-	"github.com/struckoff/kvstore/host"
-	"github.com/struckoff/kvstore/node"
+	"flag"
+	"github.com/struckoff/kvstore"
+	"github.com/struckoff/kvstore/balancer_adapter"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"log"
@@ -22,16 +19,15 @@ func main() {
 }
 
 func run() error {
-	var conf config.Config
-	configP := "config.json"
-	if len(os.Args) > 1 {
-		configP = os.Args[1]
-	}
-	configFile, err := os.Open(configP)
-	defer configFile.Close()
+	var conf kvstore.Config
+
+	cfgPath := flag.String("c", "config.json", "path to config file")
+	flag.Parse()
+	configFile, err := os.Open(*cfgPath)
 	if err != nil {
 		return err
 	}
+	defer configFile.Close()
 	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
 		return err
 	}
@@ -44,13 +40,13 @@ func run() error {
 	defer db.Close()
 
 	//Initialize balancer
-	bal, err := balancer.NewBalancer(conf.Curve.CurveType, conf.Dimensions, conf.Size, transform.KVTransform, optimizer.RangeOptimizer, nil)
+	bal, err := balancer_adapter.NewSFCBalancer(conf)
 	if err != nil {
 		return err
 	}
 
 	//Initialize local node
-	mainNode := node.NewInternalNode(conf.Name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
+	mainNode := kvstore.NewInternalNode(conf.Name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
 	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
 	if err != nil {
 		return err
@@ -60,16 +56,16 @@ func run() error {
 		return err
 	}
 	rpcServer := grpc.NewServer()
-	h, err := host.NewHost(mainNode, bal, rpcServer)
+	h, err := kvstore.NewHost(mainNode, bal, rpcServer)
 	if err != nil {
 		return err
 	}
 
-	if len(conf.Entrypoints) > 0 {
-		if err := h.Lookup(conf.Entrypoints); err != nil {
-			return err
-		}
-	}
+	//if len(conf.Entrypoints) > 0 {
+	//	if err := h.Lookup(conf.Entrypoints); err != nil {
+	//		return err
+	//	}
+	//}
 
 	//Run API servers
 	errCh := make(chan error)
@@ -81,6 +77,12 @@ func run() error {
 	}(errCh)
 	go func(errCh chan error) {
 		if err := rpcServer.Serve(inbound); err != nil {
+			errCh <- err
+			return
+		}
+	}(errCh)
+	go func(errCh chan error) {
+		if err := h.RunConsul(&conf); err != nil {
 			errCh <- err
 			return
 		}

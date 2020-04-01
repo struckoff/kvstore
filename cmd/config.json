@@ -7,5 +7,10 @@
   "DBPath": "mainNode.db",
   "Curve": "Morton",
   "Dimensions": 3,
-  "Size": 64
+  "Size": 64,
+  "Consul":{
+    "Service": "kvstore",
+    "CheckInterval": "10s",
+    "CheckTimeout":"10s"
+  }
 }

@@ -1,4 +1,4 @@
-package host
+package kvstore
 
 import (
 	"encoding/json"
