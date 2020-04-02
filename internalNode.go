@@ -20,9 +20,40 @@ type InternalNode struct {
 	db         *bolt.DB
 }
 
-func (n *InternalNode) ID() string                  { return n.id }
-func (n *InternalNode) Power() balancer.Power       { return n.p }
-func (n *InternalNode) Capacity() balancer.Capacity { return n.c }
+func (n *InternalNode) SetID(id string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.id = id
+}
+
+func (n *InternalNode) ID() string {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.id
+}
+
+func (n *InternalNode) RPCAddress() string {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.rpcaddress
+}
+
+func (n *InternalNode) HTTPAddress() string {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.address
+}
+
+func (n *InternalNode) Power() balancer.Power {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.p
+}
+func (n *InternalNode) Capacity() balancer.Capacity {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.c
+}
 
 // Store value for a given key in local storage
 func (n *InternalNode) Store(key string, body []byte) error {
@@ -69,11 +100,11 @@ func (n *InternalNode) Meta() NodeMeta {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return NodeMeta{
-		ID:         n.id,
-		Address:    n.address,
-		RPCAddress: n.rpcaddress,
-		Power:      n.p.Get(),
-		Capacity:   n.p.Get(),
+		ID:         n.ID(),
+		Address:    n.HTTPAddress(),
+		RPCAddress: n.RPCAddress(),
+		Power:      n.Power().Get(),
+		Capacity:   n.Capacity().Get(),
 	}
 }
 

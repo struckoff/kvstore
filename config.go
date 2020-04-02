@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Name        string
+	//Name        string
 	Address     string
 	RPCAddress  string
 	Power       float64
@@ -20,7 +20,7 @@ type Config struct {
 	Dimensions  uint64    //Amount of space filling curve dimensions
 	Size        uint64    //Size of space filling curve
 	Curve       CurveType //Space filling curve type
-	Consul      Consul
+	Consul      *ConfigConsul
 }
 
 type CurveType struct {
@@ -42,14 +42,15 @@ func (ct *CurveType) UnmarshalJSON(cb []byte) error {
 	}
 }
 
-type Consul struct {
+type ConfigConsul struct {
 	consulapi.Config
-	Service       string
-	CheckInterval string
-	CheckTimeout  string
+	Service                        string
+	CheckInterval                  string
+	CheckTimeout                   string
+	DeregisterCriticalServiceAfter string
 }
 
-func (ct *Consul) UnmarshalJSON(cb []byte) error {
+func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 	//defconf := consulapi.DefaultConfig()
 	m := make(map[string]string)
 	if err := json.Unmarshal(cb, &m); err != nil {
@@ -93,6 +94,10 @@ func (ct *Consul) UnmarshalJSON(cb []byte) error {
 	ct.CheckTimeout = "10s"
 	if val, ok := m["CheckTimeout"]; ok {
 		ct.CheckTimeout = val
+	}
+	ct.DeregisterCriticalServiceAfter = "600s"
+	if val, ok := m["DeregisterCriticalServiceAfter"]; ok {
+		ct.DeregisterCriticalServiceAfter = val
 	}
 
 	//if val, ok := m["Tags"]; ok {

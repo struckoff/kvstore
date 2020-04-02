@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	consulapi "github.com/hashicorp/consul/api"
 	"github.com/struckoff/kvstore"
 	"github.com/struckoff/kvstore/balancer_adapter"
 	bolt "go.etcd.io/bbolt"
-	"google.golang.org/grpc"
 	"log"
-	"net"
 	"os"
 )
 
@@ -20,6 +19,8 @@ func main() {
 
 func run() error {
 	var conf kvstore.Config
+	var name string
+	errCh := make(chan error)
 
 	cfgPath := flag.String("c", "config.json", "path to config file")
 	flag.Parse()
@@ -45,47 +46,51 @@ func run() error {
 		return err
 	}
 
+	// Initialize consul client id config allows
+	var consul *consulapi.Client
+	if conf.Consul == nil {
+		name, err = os.Hostname()
+		if err != nil {
+			return err
+		}
+	} else {
+		consul, err = consulapi.NewClient(&conf.Consul.Config)
+		if err != nil {
+			return err
+		}
+		name, err = consul.Agent().NodeName()
+		if err != nil {
+			return err
+		}
+	}
+
 	//Initialize local node
-	mainNode := kvstore.NewInternalNode(conf.Name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
-	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
-	if err != nil {
-		return err
-	}
-	inbound, err := net.ListenTCP("tcp", addy)
-	if err != nil {
-		return err
-	}
-	rpcServer := grpc.NewServer()
-	h, err := kvstore.NewHost(mainNode, bal, rpcServer)
-	if err != nil {
-		return err
-	}
+	mainNode := kvstore.NewInternalNode(name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
 
-	//if len(conf.Entrypoints) > 0 {
-	//	if err := h.Lookup(conf.Entrypoints); err != nil {
-	//		return err
-	//	}
-	//}
-
+	h, err := kvstore.NewHost(mainNode, bal, consul)
+	if err != nil {
+		return err
+	}
 	//Run API servers
-	errCh := make(chan error)
 	go func(errCh chan error) {
-		if err := h.RunServer(conf.Address); err != nil {
+		if err := h.RunHTTPServer(conf.Address); err != nil {
 			errCh <- err
 			return
 		}
 	}(errCh)
 	go func(errCh chan error) {
-		if err := rpcServer.Serve(inbound); err != nil {
+		if err := h.RunRPCServer(&conf); err != nil {
 			errCh <- err
 			return
 		}
 	}(errCh)
-	go func(errCh chan error) {
-		if err := h.RunConsul(&conf); err != nil {
-			errCh <- err
-			return
-		}
-	}(errCh)
+	if conf.Consul != nil {
+		go func(errCh chan error) {
+			if err := h.RunConsul(&conf); err != nil {
+				errCh <- err
+				return
+			}
+		}(errCh)
+	}
 	return <-errCh
 }

@@ -1,17 +1,18 @@
 {
   "Name": "Node-1",
-  "Address": "127.0.0.1:9192",
+  "Address": "0.0.0.0:9192",
   "RPCAddress": "127.0.0.1:9292",
   "Power": 1,
   "Capacity":1,
   "DBPath": "node1.db",
-  "Entrypoints": ["http://127.0.0.1:9191"],
   "Curve": "Morton",
   "Dimensions": 3,
   "Size": 64,
-  "Consul":{
+  "Consul": {
     "Service": "kvstore",
+    "Address": "127.0.0.1:8502",
     "CheckInterval": "10s",
-    "CheckTimeout":"10s"
+    "CheckTimeout":"10s",
+    "DeregisterCriticalServiceAfter": "10s"
   }
 }

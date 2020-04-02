@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
-	"github.com/struckoff/kvstore/rpcapi"
-	"golang.org/x/net/context"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 )
 
-func (h *Host) RunServer(addr string) error {
+func (h *Host) RunHTTPServer(addr string) error {
 	r := httprouter.New()
 	//r.POST("/node", h.HTTPRegister)
 	r.GET("/nodes", h.HTTPNodes)
@@ -156,35 +154,4 @@ func (h *Host) nodes() ([]NodeMeta, error) {
 		metas[iter] = n.Meta()
 	}
 	return metas, nil
-}
-
-func (h *Host) RPCStore(ctx context.Context, in *rpcapi.StoreReq) (*rpcapi.StoreRes, error) {
-	if err := h.n.Store(in.Key, in.Value); err != nil {
-		return nil, err
-	}
-	return &rpcapi.StoreRes{}, nil
-}
-func (h *Host) RPCReceive(ctx context.Context, in *rpcapi.ReceiveReq) (*rpcapi.ReceiveRes, error) {
-	b, err := h.n.Receive(in.Key)
-	if err != nil {
-		return nil, err
-	}
-	return &rpcapi.ReceiveRes{Key: in.Key, Value: b}, nil
-}
-func (h *Host) RPCExplore(ctx context.Context, in *rpcapi.ExploreReq) (*rpcapi.ExploreRes, error) {
-	keys, err := h.n.Explore()
-	if err != nil {
-		return nil, err
-	}
-	return &rpcapi.ExploreRes{Keys: keys}, nil
-}
-func (h *Host) RPCMeta(ctx context.Context, in *rpcapi.NodeMetaReq) (*rpcapi.NodeMeta, error) {
-	meta := &rpcapi.NodeMeta{
-		ID:         h.n.id,
-		Address:    h.n.address,
-		RPCAddress: h.n.rpcaddress,
-		Power:      h.n.Power().Get(),
-		Capacity:   h.n.Capacity().Get(),
-	}
-	return meta, nil
 }
