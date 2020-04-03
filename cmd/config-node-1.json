@@ -1,5 +1,4 @@
 {
-  "Name": "Node-1",
   "Address": "0.0.0.0:9192",
   "RPCAddress": "127.0.0.1:9292",
   "Power": 1,

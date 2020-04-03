@@ -157,7 +157,7 @@ func (h *Host) registerExternalNode(id, addr string) {
 		log.Printf("unable to add node %s(%s) to balancer", id, addr)
 		return
 	}
-	log.Printf("registered node %s(%s) to balancer", id, addr)
+	log.Printf("registered node %s(%s)", id, addr)
 }
 func (h *Host) updateTTL(interval time.Duration, checkID string) {
 	ticker := time.NewTicker(interval)

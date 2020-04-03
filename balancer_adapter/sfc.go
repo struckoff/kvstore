@@ -23,11 +23,11 @@ type SFCBalancer struct {
 	bal *balancer.Balancer
 }
 
-func NewSFCBalancer(conf kvstore.Config) (*SFCBalancer, error) {
+func NewSFCBalancer(conf *kvstore.Config) (*SFCBalancer, error) {
 	bal, err := balancer.NewBalancer(
-		conf.Curve.CurveType,
-		conf.Dimensions,
-		conf.Size,
+		conf.Balancer.Curve.CurveType,
+		conf.Balancer.Dimensions,
+		conf.Balancer.Size,
 		transform.KVTransform,
 		optimizer.RangeOptimizer,
 		nil)

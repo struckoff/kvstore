@@ -1,13 +1,9 @@
 {
-  "Name": "MainNode",
   "Address": "0.0.0.0:9191",
   "RPCAddress": "127.0.0.1:9291",
   "Power": 1,
   "Capacity":1,
   "DBPath": "mainNode.db",
-  "Curve": "Morton",
-  "Dimensions": 3,
-  "Size": 64,
   "Consul":{
     "Service": "kvstore",
     "Address": "127.0.0.1:8501",

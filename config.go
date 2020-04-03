@@ -10,17 +10,21 @@ import (
 )
 
 type Config struct {
-	//Name        string
-	Address     string
-	RPCAddress  string
-	Power       float64
-	Capacity    float64
-	DBpath      string
-	Entrypoints []string  //If not empty node tries to connect to each entrypoint, send its meta and receive cluster info
-	Dimensions  uint64    //Amount of space filling curve dimensions
-	Size        uint64    //Size of space filling curve
-	Curve       CurveType //Space filling curve type
-	Consul      *ConfigConsul
+	Address    string
+	RPCAddress string
+	Power      float64
+	Capacity   float64
+	DBpath     string
+	Balancer   *BalancerConfig
+	Consul     *ConfigConsul
+}
+
+// If config implies use of consul, this options will be taken from consul KV.
+// Otherwise it will be taken from config file.
+type BalancerConfig struct {
+	Dimensions uint64    //Amount of space filling curve dimensions
+	Size       uint64    //Size of space filling curve
+	Curve      CurveType //Space filling curve type
 }
 
 type CurveType struct {
@@ -44,14 +48,17 @@ func (ct *CurveType) UnmarshalJSON(cb []byte) error {
 
 type ConfigConsul struct {
 	consulapi.Config
-	Service                        string
-	CheckInterval                  string
-	CheckTimeout                   string
-	DeregisterCriticalServiceAfter string
+	Service string
+	// Use CheckInterval + CheckTimeout as interval setting for deadman switch.
+	// TTL will be sent each time per CheckInterval
+	CheckInterval                  string //Default: 30s
+	CheckTimeout                   string //Default: 10s
+	DeregisterCriticalServiceAfter string //Default: 10m
+	// Key prefix for config options stored in consul KV, c
+	KVFolder string //Default: ConfigConsul.Service
 }
 
 func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
-	//defconf := consulapi.DefaultConfig()
 	m := make(map[string]string)
 	if err := json.Unmarshal(cb, &m); err != nil {
 		return err
@@ -95,13 +102,23 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 	if val, ok := m["CheckTimeout"]; ok {
 		ct.CheckTimeout = val
 	}
-	ct.DeregisterCriticalServiceAfter = "600s"
+	ct.DeregisterCriticalServiceAfter = "10m"
 	if val, ok := m["DeregisterCriticalServiceAfter"]; ok {
 		ct.DeregisterCriticalServiceAfter = val
 	}
 
+	ct.KVFolder = ct.Service + "/"
+	if val, ok := m["KVFolder"]; ok {
+		val = strings.TrimRight(val, "/")
+		ct.KVFolder = val
+		if len(ct.KVFolder) > 0 {
+			ct.KVFolder += "/"
+		}
+		ct.DeregisterCriticalServiceAfter = val
+	}
+
 	//if val, ok := m["Tags"]; ok {
-	//	ct.Service = val
+	//	ct.Tags = val
 	//}
 
 	return nil

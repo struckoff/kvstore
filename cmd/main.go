@@ -9,6 +9,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func main() {
@@ -19,6 +21,8 @@ func main() {
 
 func run() error {
 	var conf kvstore.Config
+	// If config implies use of consul, consul agent name  will be  used as name.
+	// Otherwise, hostname will be used instead.
 	var name string
 	errCh := make(chan error)
 
@@ -30,19 +34,6 @@ func run() error {
 	}
 	defer configFile.Close()
 	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
-		return err
-	}
-
-	//Initialize database
-	db, err := bolt.Open(conf.DBpath, 0600, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	//Initialize balancer
-	bal, err := balancer_adapter.NewSFCBalancer(conf)
-	if err != nil {
 		return err
 	}
 
@@ -62,6 +53,23 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		conf, err = FillConfigFromConsul(consul, conf)
+		if err != nil {
+			return err
+		}
+	}
+
+	//Initialize database
+	db, err := bolt.Open(conf.DBpath, 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	//Initialize balancer
+	bal, err := balancer_adapter.NewSFCBalancer(&conf)
+	if err != nil {
+		return err
 	}
 
 	//Initialize local node
@@ -93,4 +101,44 @@ func run() error {
 		}(errCh)
 	}
 	return <-errCh
+}
+
+// FillConfigFromConsul take config options from consul  KV store
+// List of options
+//  - Balancer.Size
+//  - Balancer.Dimensions
+//  - Balancer.Curve
+func FillConfigFromConsul(consul *consulapi.Client, conf kvstore.Config) (kvstore.Config, error) {
+	kvMap := make(map[string][]byte)
+	kv := consul.KV()
+	pairs, _, err := kv.List(conf.Consul.KVFolder, nil)
+	if err != nil {
+		return kvstore.Config{}, err
+	}
+	for _, pair := range pairs {
+		pair.Key = strings.TrimLeft(pair.Key, conf.Consul.KVFolder)
+		kvMap[strings.ToLower(pair.Key)] = pair.Value
+	}
+	var balConfig kvstore.BalancerConfig
+
+	if val, ok := kvMap["size"]; ok {
+		balConfig.Size, err = strconv.ParseUint(string(val), 10, 64)
+		if err != nil {
+			return kvstore.Config{}, err
+		}
+	}
+
+	if val, ok := kvMap["dimensions"]; ok {
+		balConfig.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
+		if err != nil {
+			return kvstore.Config{}, err
+		}
+	}
+	if val, ok := kvMap["curve"]; ok {
+		if err := balConfig.Curve.UnmarshalJSON(val); err != nil {
+			return kvstore.Config{}, err
+		}
+	}
+	conf.Balancer = &balConfig
+	return conf, nil
 }
