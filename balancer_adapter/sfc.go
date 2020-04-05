@@ -38,11 +38,24 @@ func NewSFCBalancer(conf *kvstore.Config) (*SFCBalancer, error) {
 }
 
 func (sb *SFCBalancer) AddNode(n kvstore.Node) error {
-	return sb.bal.AddNode(n)
+	return sb.bal.AddNode(n, true)
 }
 
 func (sb *SFCBalancer) RemoveNode(id string) error {
 	return sb.bal.RemoveNode(id)
+}
+
+func (sb *SFCBalancer) SetNodes(ns []kvstore.Node) error {
+	sb.bal.Space().SetGroups(nil)
+	for _, node := range ns {
+		if err := sb.bal.AddNode(node, false); err != nil {
+			return err
+		}
+	}
+	if err := sb.bal.Optimize(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (sb *SFCBalancer) LocateKey(key string) (kvstore.Node, error) {

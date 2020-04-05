@@ -109,6 +109,9 @@ func (h *Host) consulAnnounce(conf *Config) (err error) {
 		Address:   addrParts[0],
 		Check:     &acc,
 		Namespace: conf.Consul.Namespace,
+		Meta: map[string]string{
+			"power": checkID,
+		},
 	}
 
 	if err := h.consul.Agent().ServiceRegister(service); err != nil {
@@ -134,31 +137,80 @@ func (h *Host) consulWatch(conf *Config) error {
 	return pl.RunWithConfig(conf.Consul.Address, &conf.Consul.Config)
 }
 func (h *Host) serviceHandler(id uint64, data interface{}) {
+	nCh := make(chan Node)
+	defer close(nCh)
 	entries, ok := data.([]*consulapi.ServiceEntry)
 	//fmt.Println(id, len(entries))
 	if !ok {
 		return
 	}
 	for _, entry := range entries {
-		if entry.Node.Node == h.n.ID() {
-			continue
-		}
 		addr := fmt.Sprintf("%s:%d", entry.Service.Address, entry.Service.Port)
-		go h.registerExternalNode(entry.Node.Node, addr)
+		go h.registerExternalNode(entry.Node.Node, addr, nCh)
 	}
+	count := len(entries)
+	ns := make([]Node, 0, count)
+	for node := range nCh {
+		count--
+		if node != nil {
+			ns = append(ns, node)
+		}
+		if count == 0 {
+			break
+		}
+	}
+	if err := h.bal.SetNodes(ns); err != nil {
+		log.Println(err.Error())
+	}
+	locations, err := h.keysLocations()
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	h.relocate(locations)
 }
-func (h *Host) registerExternalNode(id, addr string) {
+func (h *Host) registerExternalNode(id, addr string, nCh chan<- Node) {
+	if id == h.n.ID() {
+		nCh <- h.n
+		return
+	}
 	en, err := NewExternalNode(addr)
 	if err != nil {
 		log.Printf("unable to connect to node %s(%s)", id, addr)
+		nCh <- nil
 		return
 	}
-	if err := h.bal.AddNode(en); err != nil {
-		log.Printf("unable to add node %s(%s) to balancer", id, addr)
-		return
-	}
+	nCh <- en
 	log.Printf("registered node %s(%s)", id, addr)
 }
+func (h *Host) keysLocations() (map[Node][]string, error) {
+	res := make(map[Node][]string)
+	keys, err := h.n.Explore()
+	if err != nil {
+		return nil, err
+	}
+	for iter := range keys {
+		n, err := h.bal.LocateKey(keys[iter])
+		if err != nil {
+			return nil, err
+		}
+		if n.ID() != h.n.ID() {
+			res[n] = append(res[n], keys[iter])
+		}
+	}
+	return res, nil
+}
+func (h *Host) relocate(locations map[Node][]string) {
+	for n, keys := range locations {
+		go func(n Node, keys []string) {
+			if err := h.n.Move(keys, n); err != nil {
+				log.Println(err.Error())
+				return
+			}
+		}(n, keys)
+	}
+}
+
 func (h *Host) updateTTL(interval time.Duration, checkID string) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

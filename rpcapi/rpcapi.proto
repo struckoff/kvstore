@@ -2,23 +2,16 @@ syntax = "proto3";
 
 package rpcapi;
 
-message StoreReq {
+message KeyValue {
 	string Key = 1;
 	bytes Value = 2;
 }
 
-message StoreRes {}
+message Empty {}
 
-message ReceiveReq {
+message KeyReq {
 	string Key = 1;
 }
-
-message ReceiveRes {
-	string Key = 1;
-	bytes Value = 2;
-}
-
-message NodeMetaReq {}
 
 message NodeMeta {
 	string ID = 1;
@@ -32,15 +25,20 @@ message NodeMetas {
 	repeated NodeMeta Metas = 1;
 }
 
-message ExploreReq {}
 
 message ExploreRes {
 	repeated string Keys = 1;
 }
 
+message KeyValues {
+	repeated KeyValue KVs = 1;
+}
+
 service RPCListener {
-	rpc RPCStore (StoreReq) returns (StoreRes);
-	rpc RPCReceive (ReceiveReq) returns (ReceiveRes);
-	rpc RPCExplore (ExploreReq) returns (ExploreRes);
-	rpc RPCMeta(NodeMetaReq) returns (NodeMeta);
+	rpc RPCStore (KeyValue) returns (Empty);
+	rpc RPCStorePairs (KeyValues) returns (Empty);
+	rpc RPCReceive (KeyReq) returns (KeyValue);
+	rpc RPCRemove (KeyReq) returns (Empty);
+	rpc RPCExplore (Empty) returns (ExploreRes);
+	rpc RPCMeta (Empty) returns (NodeMeta);
 }

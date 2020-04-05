@@ -3,6 +3,7 @@ package kvstore
 import (
 	"github.com/pkg/errors"
 	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/kvstore/rpcapi"
 	bolt "go.etcd.io/bbolt"
 	"sync"
 )
@@ -66,25 +67,84 @@ func (n *InternalNode) Store(key string, body []byte) error {
 	})
 }
 
+func (n *InternalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
+	err := n.db.Update(func(tx *bolt.Tx) error {
+		bc, err := tx.CreateBucketIfNotExists(mainBucket)
+		if err != nil {
+			return err
+		}
+		for iter := range pairs {
+			if err := bc.Put([]byte(pairs[iter].Key), pairs[iter].Value); err != nil {
+				return errors.Wrap(err, "failed to store pair")
+			}
+		}
+		return nil
+	})
+	return err
+}
+
 // Return value for a given key from local storage
 func (n *InternalNode) Receive(key string) ([]byte, error) {
 	var body []byte
 	err := n.db.View(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
-			return nil
+			return errors.New("unable to receive value, bucket not found")
 		}
 		body = bc.Get([]byte(key))
 		return nil
 	})
 	return body, err
 }
+func (n *InternalNode) Remove(key string) error {
+	err := n.db.Update(func(tx *bolt.Tx) error {
+		bc := tx.Bucket(mainBucket)
+		if bc == nil {
+			return nil
+		}
+		return bc.Delete([]byte(key))
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to remove key")
+	}
+	return nil
+}
+
+func (n *InternalNode) Move(keys []string, en Node) error {
+	err := n.db.Update(func(tx *bolt.Tx) error {
+		bc := tx.Bucket(mainBucket)
+		if bc == nil {
+			return nil
+		}
+		pairs := make([]*rpcapi.KeyValue, len(keys))
+		for iter := range keys {
+			body := bc.Get([]byte(keys[iter]))
+			pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: body}
+		}
+		if err := en.StorePairs(pairs); err != nil {
+			return errors.Wrap(err, "failed to move keys and values to another node")
+		}
+
+		for iter := range keys {
+			if err := bc.Delete([]byte(keys[iter])); err != nil {
+				return errors.Wrap(err, "failed to delete keys")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (n *InternalNode) Explore() ([]string, error) {
-	var res []string
+	res := make([]string, 0)
 	err := n.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(mainBucket)
 		if b == nil {
-			return errors.New("bucket not found")
+			//return errors.New("bucket not found")
+			return nil
 		}
 		err := b.ForEach(func(k, v []byte) error {
 			res = append(res, string(k))
