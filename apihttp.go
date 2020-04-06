@@ -86,7 +86,7 @@ func (h *Host) HTTPExplore(w http.ResponseWriter, r *http.Request, ps httprouter
 			defer wg.Done()
 			keys, err := n.Explore()
 			if err != nil {
-				log.Printf("%s: %w", n.ID(), err)
+				log.Printf("%s: %s", n.ID(), err.Error())
 				return
 			}
 			sm.Put(n.ID(), keys)
@@ -103,36 +103,6 @@ func (h *Host) HTTPExplore(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 }
-
-//func (h *Host) HTTPRegister(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//	if r.Body == nil {
-//		http.Error(w, "empty body", http.StatusBadRequest)
-//		return
-//	}
-//	defer r.Body.Close()
-//	var meta NodeMeta
-//	if err := json.NewDecoder(r.Body).Decode(&meta); err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
-//		return
-//	}
-//	en, err := NewExternalNode(meta)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
-//		return
-//	}
-//	if err := h.AddNode(en); err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
-//		return
-//	}
-//	metas, err := h.nodes()
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//	if err := json.NewEncoder(w).Encode(metas); err != nil {
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//	}
-//}
 func (h *Host) HTTPNodes(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	metas, err := h.nodes()
 	if err != nil {

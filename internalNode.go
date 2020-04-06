@@ -21,35 +21,42 @@ type InternalNode struct {
 	db         *bolt.DB
 }
 
+// SetID replace node id with given one.
 func (n *InternalNode) SetID(id string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.id = id
 }
 
+//ID returns the node's ID
 func (n *InternalNode) ID() string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.id
 }
 
+//RPCAddress returns the node's rpc address
 func (n *InternalNode) RPCAddress() string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.rpcaddress
 }
 
+//HTTPAddress returns the node's http address
 func (n *InternalNode) HTTPAddress() string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.address
 }
 
+//Power returns the node's power
 func (n *InternalNode) Power() balancer.Power {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.p
 }
+
+//Capacity returns the node's capacity
 func (n *InternalNode) Capacity() balancer.Capacity {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
@@ -67,6 +74,7 @@ func (n *InternalNode) Store(key string, body []byte) error {
 	})
 }
 
+// Store KV pairs in local storage
 func (n *InternalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 	err := n.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
@@ -96,6 +104,8 @@ func (n *InternalNode) Receive(key string) ([]byte, error) {
 	})
 	return body, err
 }
+
+// Remove value for a given key
 func (n *InternalNode) Remove(key string) error {
 	err := n.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
@@ -110,6 +120,7 @@ func (n *InternalNode) Remove(key string) error {
 	return nil
 }
 
+// Move values for a given keys to another node
 func (n *InternalNode) Move(keys []string, en Node) error {
 	err := n.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
@@ -138,6 +149,7 @@ func (n *InternalNode) Move(keys []string, en Node) error {
 	return nil
 }
 
+// Explore returns the list of keys in local storage.
 func (n *InternalNode) Explore() ([]string, error) {
 	res := make([]string, 0)
 	err := n.db.View(func(tx *bolt.Tx) error {
@@ -168,6 +180,7 @@ func (n *InternalNode) Meta() NodeMeta {
 	}
 }
 
+// Return new instance InternalNode.
 func NewInternalNode(id, addr, raddr string, p float64, c float64, db *bolt.DB) *InternalNode {
 	return &InternalNode{
 		id:         id,

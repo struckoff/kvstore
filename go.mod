@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/golang/protobuf v1.3.5
 	github.com/hashicorp/consul/api v1.4.0
+	github.com/hashicorp/go-uuid v1.0.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/struckoff/SFCFramework v0.0.0-20200405132449-c125da4b1018

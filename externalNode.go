@@ -21,9 +21,21 @@ type ExternalNode struct {
 	rpcclient  rpcapi.RPCListenerClient
 }
 
-func (n *ExternalNode) ID() string                  { return n.id }
-func (n *ExternalNode) Power() balancer.Power       { return n.p }
-func (n *ExternalNode) Capacity() balancer.Capacity { return n.c }
+func (n *ExternalNode) ID() string {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.id
+}
+func (n *ExternalNode) Power() balancer.Power {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.p
+}
+func (n *ExternalNode) Capacity() balancer.Capacity {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.c
+}
 
 //Save value for a given key on the remote node
 func (n *ExternalNode) Store(key string, body []byte) error {
