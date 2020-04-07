@@ -3,8 +3,9 @@ package kvstore
 import (
 	"github.com/pkg/errors"
 	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/kvstore/rpcapi"
+	"github.com/struckoff/kvrouter"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/grpc"
 	"sync"
 )
 
@@ -16,9 +17,11 @@ type InternalNode struct {
 	id         string
 	address    string
 	rpcaddress string
+	rpcserver  *grpc.Server
 	p          Power
 	c          Capacity
 	db         *bolt.DB
+	kvr        *kvrouter.Router
 }
 
 // SetID replace node id with given one.

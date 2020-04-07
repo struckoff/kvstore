@@ -72,7 +72,7 @@ func run() error {
 		return err
 	}
 
-	//Initialize local node
+	//Initialize local node1
 	mainNode := kvstore.NewInternalNode(name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
 
 	h, err := kvstore.NewHost(mainNode, bal, consul)
