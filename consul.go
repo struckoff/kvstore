@@ -123,7 +123,7 @@ func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
 		log.Println(err.Error())
 		return
 	}
-	inn.relocate(locations)
+	inn.Move(locations)
 }
 func (inn *InternalNode) registerExternalNode(id, addr string, nCh chan<- kvrouter.Node) {
 	if id == inn.ID() {
@@ -146,7 +146,7 @@ func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
 		return nil, err
 	}
 	for iter := range keys {
-		n, err := inn.kvr.GetNode(keys[iter])
+		n, err := inn.kvr.LocateKey(keys[iter])
 		if err != nil {
 			return nil, err
 		}
@@ -155,16 +155,6 @@ func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
 		}
 	}
 	return res, nil
-}
-func (inn *InternalNode) relocate(locations map[kvrouter.Node][]string) {
-	for n, keys := range locations {
-		go func(n kvrouter.Node, keys []string) {
-			if err := inn.Move(keys, n); err != nil {
-				log.Println(err.Error())
-				return
-			}
-		}(n, keys)
-	}
 }
 func (inn *InternalNode) updateTTLConsul(interval time.Duration, checkID string) {
 	ticker := time.NewTicker(interval)

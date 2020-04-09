@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 type Config struct {
 	Name       *string //force name of node instead of hostname or consul
 	Address    string
@@ -230,20 +229,18 @@ const (
 	ConsulMode
 )
 
-func (dn *DiscoverMode)UnmarshalJSON(cb []byte) error{
+func (dn *DiscoverMode) UnmarshalJSON(cb []byte) error {
 	c := strings.ToLower(string(cb))
 	c = strings.Trim(c, "\"")
 	switch c {
-		case "standalone":
-			*dn = StandaloneMode
-		case "kvrouter":
-			*dn = KvrouterMode
-		case "consul":
-			*dn = ConsulMode
-		default:
-			return errors.New("wrong node mode")
+	case "standalone":
+		*dn = StandaloneMode
+	case "kvrouter":
+		*dn = KvrouterMode
+	case "consul":
+		*dn = ConsulMode
+	default:
+		return errors.New("wrong node mode")
 	}
 	return nil
 }
-
-

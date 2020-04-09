@@ -46,7 +46,7 @@ func run() error {
 	}
 	defer db.Close()
 
-	switch conf.Mode{
+	switch conf.Mode {
 	case kvstore.StandaloneMode, kvstore.ConsulMode:
 		bal, err := balancer_adapter.NewSFCBalancer(conf.Balancer)
 		if err != nil {
@@ -69,7 +69,6 @@ func run() error {
 	case kvstore.KvrouterMode:
 		inn = kvstore.NewInternalNode(&conf, db, nil)
 	}
-
 
 	go func(errCh chan error, conf *kvstore.Config) {
 		if err := inn.RunRPCServer(conf); err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/struckoff/kvrouter/rpcapi"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/grpc"
+	"log"
 	"net/http"
 	"sync"
 )
@@ -130,31 +131,44 @@ func (inn *InternalNode) Remove(key string) error {
 }
 
 // Move values for a given keys to another node
-func (inn *InternalNode) Move(keys []string, en kvrouter.Node) error {
-	err := inn.db.Update(func(tx *bolt.Tx) error {
-		bc := tx.Bucket(mainBucket)
-		if bc == nil {
-			return nil
+func (inn *InternalNode) Move(nk map[kvrouter.Node][]string) error {
+	var wg sync.WaitGroup
+	for en, keys := range nk {
+		if len(keys) == 0 {
+			continue
 		}
-		pairs := make([]*rpcapi.KeyValue, len(keys))
-		for iter := range keys {
-			body := bc.Get([]byte(keys[iter]))
-			pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: body}
-		}
-		if err := en.StorePairs(pairs); err != nil {
-			return errors.Wrap(err, "failed to move keys and values to another node")
-		}
+		wg.Add(1)
+		go func(en kvrouter.Node, keys []string, wg *sync.WaitGroup) {
+			defer wg.Done()
+			err := inn.db.Update(func(tx *bolt.Tx) error {
+				bc := tx.Bucket(mainBucket)
+				if bc == nil {
+					return nil
+				}
+				pairs := make([]*rpcapi.KeyValue, len(keys))
+				for iter := range keys {
+					body := bc.Get([]byte(keys[iter]))
+					pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: body}
+				}
+				if err := en.StorePairs(pairs); err != nil {
+					return errors.Wrap(err, "failed to move keys and values to another node")
+				}
 
-		for iter := range keys {
-			if err := bc.Delete([]byte(keys[iter])); err != nil {
-				return errors.Wrap(err, "failed to delete keys")
+				for iter := range keys {
+					if err := bc.Delete([]byte(keys[iter])); err != nil {
+						return errors.Wrap(err, "failed to delete keys")
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				log.Println(err)
+				return
 			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
+			log.Printf("%d keys relocated to node(%s)", len(keys),en.ID())
+		}(en, keys, &wg)
 	}
+	wg.Wait()
 	return nil
 }
 

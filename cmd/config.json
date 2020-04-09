@@ -1,4 +1,5 @@
 {
+  "Name": "node-0",
   "Mode": "kvrouter",
   "Address": "0.0.0.0:9191",
   "RPCAddress": "127.0.0.1:9291",
@@ -6,9 +7,9 @@
   "Capacity":1,
   "DBPath": "mainNode.db",
   "Health": {
-    "CheckInterval": "1s",
-    "CheckTimeout":"1s",
-    "DeregisterCriticalServiceAfter": "1s"
+    "CheckInterval": "10s",
+    "CheckTimeout":"10s",
+    "DeregisterCriticalServiceAfter": "10s"
   },
   "KVRouter":{
     "Address": "127.0.0.1:9290"

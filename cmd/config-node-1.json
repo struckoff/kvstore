@@ -1,17 +1,21 @@
 {
+  "Name": "node-1",
+  "Mode": "kvrouter",
   "Address": "0.0.0.0:9192",
   "RPCAddress": "127.0.0.1:9292",
   "Power": 1,
   "Capacity":1,
-  "DBPath": "node1.db",
-  "Curve": "Morton",
-  "Dimensions": 3,
-  "Size": 64,
-  "Consul": {
-    "Service": "kvstore",
-    "Address": "127.0.0.1:8502",
+  "DBPath": "node-1.db",
+  "Health": {
     "CheckInterval": "10s",
     "CheckTimeout":"10s",
     "DeregisterCriticalServiceAfter": "10s"
+  },
+  "KVRouter":{
+    "Address": "127.0.0.1:9290"
+  },
+  "Consul":{
+    "Service": "kvstore",
+    "Address": "127.0.0.1:8501"
   }
 }
