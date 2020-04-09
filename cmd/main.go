@@ -3,14 +3,12 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	consulapi "github.com/hashicorp/consul/api"
+	"github.com/pkg/errors"
+	"github.com/struckoff/kvrouter/balancer_adapter"
+	kvrouter "github.com/struckoff/kvrouter/router"
 	"github.com/struckoff/kvstore"
-	"github.com/struckoff/kvstore/balancer_adapter"
 	bolt "go.etcd.io/bbolt"
-	"log"
 	"os"
-	"strconv"
-	"strings"
 )
 
 func main() {
@@ -21,124 +19,83 @@ func main() {
 
 func run() error {
 	var conf kvstore.Config
+	var inn *kvstore.InternalNode
 	// If config implies use of consul, consul agent name  will be  used as name.
 	// Otherwise, hostname will be used instead.
-	var name string
 	errCh := make(chan error)
 
 	cfgPath := flag.String("c", "config.json", "path to config file")
 	flag.Parse()
 	configFile, err := os.Open(*cfgPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to open config file")
 	}
 	defer configFile.Close()
 	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
-		return err
+		return errors.Wrap(err, "failed to parse config file")
 	}
 
-	// Initialize consul client id config allows
-	var consul *consulapi.Client
-	if conf.Consul == nil {
-		name, err = os.Hostname()
-		if err != nil {
-			return err
-		}
-	} else {
-		consul, err = consulapi.NewClient(&conf.Consul.Config)
-		if err != nil {
-			return err
-		}
-		name, err = consul.Agent().NodeName()
-		if err != nil {
-			return err
-		}
-		conf, err = FillConfigFromConsul(consul, conf)
-		if err != nil {
-			return err
-		}
+	if err := conf.Prepare(); err != nil {
+		return err
 	}
 
 	//Initialize database
 	db, err := bolt.Open(conf.DBpath, 0600, nil)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "failed to open database")
 	}
 	defer db.Close()
 
-	//Initialize balancer
-	bal, err := balancer_adapter.NewSFCBalancer(&conf)
-	if err != nil {
-		return err
-	}
-
-	//Initialize local node1
-	mainNode := kvstore.NewInternalNode(name, conf.Address, conf.RPCAddress, conf.Power, conf.Capacity, db)
-
-	h, err := kvstore.NewHost(mainNode, bal, consul)
-	if err != nil {
-		return err
-	}
-	//Run API servers
-	go func(errCh chan error) {
-		if err := h.RunHTTPServer(conf.Address); err != nil {
-			errCh <- err
-			return
+	switch conf.Mode{
+	case kvstore.StandaloneMode, kvstore.ConsulMode:
+		bal, err := balancer_adapter.NewSFCBalancer(conf.Balancer)
+		if err != nil {
+			return err
 		}
-	}(errCh)
-	go func(errCh chan error) {
-		if err := h.RunRPCServer(&conf); err != nil {
-			errCh <- err
-			return
+		kvr, err := kvrouter.NewRouter(bal)
+		if err != nil {
+			return errors.Wrap(err, "failed to initialize router")
 		}
-	}(errCh)
-	if conf.Consul != nil {
-		go func(errCh chan error) {
-			if err := h.RunConsul(&conf); err != nil {
-				errCh <- err
+		//Initialize local node1
+		inn = kvstore.NewInternalNode(&conf, db, kvr)
+
+		//Run API servers
+		go func(errCh chan error, conf *kvstore.Config) {
+			if err := inn.RunHTTPServer(conf.Address); err != nil {
+				errCh <- errors.Wrap(err, "failed to run HTTP server")
 				return
 			}
-		}(errCh)
+		}(errCh, &conf)
+	case kvstore.KvrouterMode:
+		inn = kvstore.NewInternalNode(&conf, db, nil)
 	}
+
+
+	go func(errCh chan error, conf *kvstore.Config) {
+		if err := inn.RunRPCServer(conf); err != nil {
+			errCh <- errors.Wrap(err, "failed to run RPC server")
+			return
+		}
+	}(errCh, &conf)
+
+	//Run discovery connection
+	go func(errCh chan error, inn *kvstore.InternalNode, conf *kvstore.Config) {
+		ds := discoveryService(conf.Mode, inn)
+		if err := ds(conf); err != nil {
+			errCh <- errors.Wrap(err, "failed to run discovery")
+			return
+		}
+	}(errCh, inn, &conf)
+
 	return <-errCh
 }
 
-// FillConfigFromConsul take config options from consul  KV store
-// List of options
-//  - Balancer.Size
-//  - Balancer.Dimensions
-//  - Balancer.Curve
-func FillConfigFromConsul(consul *consulapi.Client, conf kvstore.Config) (kvstore.Config, error) {
-	kvMap := make(map[string][]byte)
-	kv := consul.KV()
-	pairs, _, err := kv.List(conf.Consul.KVFolder, nil)
-	if err != nil {
-		return kvstore.Config{}, err
+func discoveryService(mode kvstore.DiscoverMode, inn *kvstore.InternalNode) func(conf *kvstore.Config) error {
+	switch mode {
+	case kvstore.KvrouterMode:
+		return inn.RunKVRouter
+	case kvstore.ConsulMode:
+		return inn.RunConsul
 	}
-	for _, pair := range pairs {
-		pair.Key = strings.TrimLeft(pair.Key, conf.Consul.KVFolder)
-		kvMap[strings.ToLower(pair.Key)] = pair.Value
-	}
-	var balConfig kvstore.BalancerConfig
-
-	if val, ok := kvMap["size"]; ok {
-		balConfig.Size, err = strconv.ParseUint(string(val), 10, 64)
-		if err != nil {
-			return kvstore.Config{}, err
-		}
-	}
-
-	if val, ok := kvMap["dimensions"]; ok {
-		balConfig.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
-		if err != nil {
-			return kvstore.Config{}, err
-		}
-	}
-	if val, ok := kvMap["curve"]; ok {
-		if err := balConfig.Curve.UnmarshalJSON(val); err != nil {
-			return kvstore.Config{}, err
-		}
-	}
-	conf.Balancer = &balConfig
-	return conf, nil
+	return nil
 }

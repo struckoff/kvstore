@@ -120,7 +120,7 @@ package kvstore
 //	}
 //
 //	// Run TTL updater
-//	go h.updateTTL(checkInterval, checkID)
+//	go h.updateTTLConsul(checkInterval, checkID)
 //
 //	return nil
 //}
@@ -212,7 +212,7 @@ package kvstore
 //	}
 //}
 //
-//func (h *Host) updateTTL(interval time.Duration, checkID string) {
+//func (h *Host) updateTTLConsul(interval time.Duration, checkID string) {
 //	ticker := time.NewTicker(interval)
 //	defer ticker.Stop()
 //	for range ticker.C {

@@ -5,18 +5,98 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
 	"github.com/struckoff/SFCFramework/curve"
+	kvrouter_conf "github.com/struckoff/kvrouter/config"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
+
 type Config struct {
+	Name       *string //force name of node instead of hostname or consul
 	Address    string
 	RPCAddress string
+	Mode       DiscoverMode //standalone, consul, kvrouter
 	Power      float64
 	Capacity   float64
 	DBpath     string
-	Balancer   *BalancerConfig
+	Health     HealthConfig // TTL check config
+	KVRouter   *KVRouterConfig
+	Balancer   *kvrouter_conf.BalancerConfig
 	Consul     *ConfigConsul
+}
+
+func (conf *Config) Prepare() error {
+	switch conf.Mode {
+	case StandaloneMode, KvrouterMode:
+		if conf.Name == nil {
+			name, err := os.Hostname()
+			if err != nil {
+				return err
+			}
+			conf.Name = &name
+		}
+	case ConsulMode:
+		consul, err := consulapi.NewClient(&conf.Consul.Config)
+		if err != nil {
+			return err
+		}
+		if err := conf.fillConfigFromConsul(consul); err != nil {
+			return err
+		}
+	default:
+		return errors.New("wrong mode")
+	}
+	return nil
+}
+
+// fillConfigFromConsul take config options from consul  KV store
+// List of options
+//  - Balancer.Size
+//  - Balancer.Dimensions
+//  - Balancer.Curve
+func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
+	if conf.Name != nil {
+		name, err := consul.Agent().NodeName()
+		if err != nil {
+			return err
+		}
+		conf.Name = &name
+	}
+
+	kvMap := make(map[string][]byte)
+	kv := consul.KV()
+	pairs, _, err := kv.List(conf.Consul.KVFolder, nil)
+	if err != nil {
+		return err
+	}
+	for _, pair := range pairs {
+		pair.Key = strings.TrimLeft(pair.Key, conf.Consul.KVFolder)
+		kvMap[strings.ToLower(pair.Key)] = pair.Value
+	}
+	var balConfig kvrouter_conf.BalancerConfig
+
+	if val, ok := kvMap["size"]; ok {
+		balConfig.Size, err = strconv.ParseUint(string(val), 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+
+	if val, ok := kvMap["dimensions"]; ok {
+		balConfig.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if val, ok := kvMap["curve"]; ok {
+		if err := balConfig.Curve.UnmarshalJSON(val); err != nil {
+			return err
+		}
+	}
+	conf.Balancer = &balConfig
+	return nil
 }
 
 // If config implies use of consul, this options will be taken from consul KV.
@@ -25,6 +105,43 @@ type BalancerConfig struct {
 	Dimensions uint64    //Amount of space filling curve dimensions
 	Size       uint64    //Size of space filling curve
 	Curve      CurveType //Space filling curve type
+}
+
+type KVRouterConfig struct {
+	Address string
+}
+
+// TTL check config
+type HealthConfig struct {
+	// Use CheckInterval + CheckTimeout as interval setting for deadman switch.
+	CheckInterval string //Default: 30s
+	// TTL will be sent each time per CheckInterval
+	CheckTimeout                   string //Default: 10s
+	DeregisterCriticalServiceAfter string //Default: 10m
+}
+
+func (ct *HealthConfig) UnmarshalJSON(cb []byte) error {
+	m := make(map[string]string)
+	if err := json.Unmarshal(cb, &m); err != nil {
+		return err
+	}
+
+	ct.CheckInterval = "30s"
+	if val, ok := m["CheckInterval"]; ok {
+		ct.CheckInterval = val
+	}
+
+	ct.CheckTimeout = "10s"
+	if val, ok := m["CheckTimeout"]; ok {
+		ct.CheckTimeout = val
+	}
+
+	ct.DeregisterCriticalServiceAfter = "10m"
+	if val, ok := m["DeregisterCriticalServiceAfter"]; ok {
+		ct.DeregisterCriticalServiceAfter = val
+	}
+
+	return nil
 }
 
 type CurveType struct {
@@ -49,11 +166,6 @@ func (ct *CurveType) UnmarshalJSON(cb []byte) error {
 type ConfigConsul struct {
 	consulapi.Config
 	Service string
-	// Use CheckInterval + CheckTimeout as interval setting for deadman switch.
-	// TTL will be sent each time per CheckInterval
-	CheckInterval                  string //Default: 30s
-	CheckTimeout                   string //Default: 10s
-	DeregisterCriticalServiceAfter string //Default: 10m
 	// Key prefix for config options stored in consul KV, c
 	KVFolder string //Default: ConfigConsul.Service
 }
@@ -93,20 +205,6 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 		ct.Service = val
 	}
 
-	ct.CheckInterval = "30s"
-	if val, ok := m["CheckInterval"]; ok {
-		ct.CheckInterval = val
-	}
-
-	ct.CheckTimeout = "10s"
-	if val, ok := m["CheckTimeout"]; ok {
-		ct.CheckTimeout = val
-	}
-	ct.DeregisterCriticalServiceAfter = "10m"
-	if val, ok := m["DeregisterCriticalServiceAfter"]; ok {
-		ct.DeregisterCriticalServiceAfter = val
-	}
-
 	ct.KVFolder = ct.Service + "/"
 	if val, ok := m["KVFolder"]; ok {
 		val = strings.TrimRight(val, "/")
@@ -114,7 +212,7 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 		if len(ct.KVFolder) > 0 {
 			ct.KVFolder += "/"
 		}
-		ct.DeregisterCriticalServiceAfter = val
+
 	}
 
 	//if val, ok := m["Tags"]; ok {
@@ -123,3 +221,29 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 
 	return nil
 }
+
+type DiscoverMode int
+
+const (
+	StandaloneMode DiscoverMode = iota
+	KvrouterMode
+	ConsulMode
+)
+
+func (dn *DiscoverMode)UnmarshalJSON(cb []byte) error{
+	c := strings.ToLower(string(cb))
+	c = strings.Trim(c, "\"")
+	switch c {
+		case "standalone":
+			*dn = StandaloneMode
+		case "kvrouter":
+			*dn = KvrouterMode
+		case "consul":
+			*dn = ConsulMode
+		default:
+			return errors.New("wrong node mode")
+	}
+	return nil
+}
+
+

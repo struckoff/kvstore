@@ -18,7 +18,7 @@ func (n *InternalNode) RunRPCServer(conf *Config) error {
 		return err
 	}
 	n.rpcserver = grpc.NewServer()
-	rpcapi.RegisterRPCListenerServer(n.rpcserver, n)
+	rpcapi.RegisterRPCNodeServer(n.rpcserver, n)
 
 	if err := n.rpcserver.Serve(inbound); err != nil {
 		return err
@@ -72,4 +72,9 @@ func (n *InternalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.N
 		Capacity:   n.Capacity().Get(),
 	}
 	return meta, nil
+}
+
+func (n *InternalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
+	//TODO implement
+	return &rpcapi.Empty{}, nil
 }
