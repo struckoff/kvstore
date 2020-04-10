@@ -13,17 +13,20 @@ import (
 )
 
 type Config struct {
-	Name       *string //force name of node instead of hostname or consul
-	Address    string
-	RPCAddress string
-	Mode       DiscoverMode //standalone, consul, kvrouter
-	Power      float64
-	Capacity   float64
-	DBpath     string
-	Health     HealthConfig // TTL check config
-	KVRouter   *KVRouterConfig
-	Balancer   *kvrouter_conf.BalancerConfig
-	Consul     *ConfigConsul
+	//force name of node instead of hostname or consul
+	Name       *string `envconfig:"NAME"`
+	Address    string  `envconfig:"ADDRERSS"`
+	RPCAddress string  `envconfig:"RPC_ADDRESS"`
+	//standalone, consul, kvrouter
+	Mode     DiscoverMode `envconfig:"MODE"`
+	Power    float64      `envconfig:"POWER"`
+	Capacity float64      `envconfig:"CAPACITY"`
+	DBpath   string       `envconfig:"DBPATH"`
+	// TTL check config
+	Health   HealthConfig
+	KVRouter *KVRouterConfig
+	Balancer *kvrouter_conf.BalancerConfig
+	Consul   *ConfigConsul
 }
 
 func (conf *Config) Prepare() error {
@@ -101,13 +104,16 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 // If config implies use of consul, this options will be taken from consul KV.
 // Otherwise it will be taken from config file.
 type BalancerConfig struct {
-	Dimensions uint64    //Amount of space filling curve dimensions
-	Size       uint64    //Size of space filling curve
-	Curve      CurveType //Space filling curve type
+	//Amount of space filling curve dimensions
+	Dimensions uint64 `envconfig:"KVSTORE_SFC_DIMENSIONS"`
+	//Size of space filling curve
+	Size uint64 `envconfig:"KVSTORE_SFC_SIZE"`
+	//Space filling curve type
+	Curve CurveType `envconfig:"KVSTORE_SFC_CURVE"`
 }
 
 type KVRouterConfig struct {
-	Address string
+	Address string `envconfig:"KVSTORE_KVROUTER_ADDRESS"`
 }
 
 // TTL check config

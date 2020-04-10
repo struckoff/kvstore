@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 	"github.com/struckoff/kvrouter/balancer_adapter"
 	kvrouter "github.com/struckoff/kvrouter/router"
@@ -33,6 +34,11 @@ func run() error {
 	defer configFile.Close()
 	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
 		return errors.Wrap(err, "failed to parse config file")
+	}
+
+
+	if err := envconfig.Process("KVSTORE", &conf); err != nil {
+		return err
 	}
 
 	if err := conf.Prepare(); err != nil {
