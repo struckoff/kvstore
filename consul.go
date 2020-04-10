@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// RunKVRouter - register service in consul
+// Function register TTL check and sends heartbeat each Config.Health.CheckInterval
 func (inn *InternalNode) RunConsul(conf *Config) error {
 	if err := inn.consulAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in consul")
@@ -22,6 +24,7 @@ func (inn *InternalNode) RunConsul(conf *Config) error {
 	return nil
 }
 
+// consulAnnounce - register node and TTL check in consul
 func (inn *InternalNode) consulAnnounce(conf *Config) (err error) {
 	checkID := inn.ID() + "_ttl"
 
@@ -79,6 +82,8 @@ func (inn *InternalNode) consulAnnounce(conf *Config) (err error) {
 
 	return nil
 }
+
+// serviceWatch - cosul service watcher
 func (inn *InternalNode) consulWatch(conf *Config) error {
 	filter := map[string]interface{}{
 		"type":    "service",
@@ -92,6 +97,8 @@ func (inn *InternalNode) consulWatch(conf *Config) error {
 	pl.Handler = inn.serviceHandler
 	return pl.RunWithConfig(conf.Consul.Address, &conf.Consul.Config)
 }
+
+// serviceHandler - callback which calls on changes in service inside consul.
 func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
 	nCh := make(chan kvrouter.Node)
 	defer close(nCh)
@@ -125,6 +132,9 @@ func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
 	}
 	inn.Move(locations)
 }
+
+//registerExternalNode - register nodes from consul in local kvrouter.
+// Function gather node information from nodes by RPC.
 func (inn *InternalNode) registerExternalNode(id, addr string, nCh chan<- kvrouter.Node) {
 	if id == inn.ID() {
 		nCh <- inn
@@ -139,6 +149,8 @@ func (inn *InternalNode) registerExternalNode(id, addr string, nCh chan<- kvrout
 	nCh <- en
 	log.Printf("registered node %s(%s)", id, addr)
 }
+
+//keysLocations - returns keys which should be moved to another node
 func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
 	res := make(map[kvrouter.Node][]string)
 	keys, err := inn.Explore()
@@ -156,6 +168,8 @@ func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
 	}
 	return res, nil
 }
+
+// heartbeat
 func (inn *InternalNode) updateTTLConsul(interval time.Duration, checkID string) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// RunKVRouter - resister node in remote KVRouter.
+// Run goroutine which sends heartbeat each Config.Health.CheckInterval
 func (inn *InternalNode) RunKVRouter(conf *Config) error {
 	c, err := kvClient(conf.KVRouter.Address)
 	if err != nil {
@@ -21,6 +23,7 @@ func (inn *InternalNode) RunKVRouter(conf *Config) error {
 	return nil
 }
 
+// kvClient returns rpc client for kvrouter
 func kvClient(addr string) (rpcapi.RPCBalancerClient, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure()) // TODO Make it secure
 	if err != nil {
@@ -30,6 +33,7 @@ func kvClient(addr string) (rpcapi.RPCBalancerClient, error) {
 	return c, nil
 }
 
+// kvrouterAnnounce - register node in kvrouter
 func (inn *InternalNode) kvrouterAnnounce(conf *Config) error {
 	checkInterval, err := time.ParseDuration(conf.Health.CheckInterval)
 	if err != nil {
@@ -54,6 +58,8 @@ func (inn *InternalNode) kvrouterAnnounce(conf *Config) error {
 
 	return nil
 }
+
+//heartbeat
 func (inn *InternalNode) updateTTLKVRoute(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	p := &rpcapi.Ping{
