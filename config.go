@@ -25,6 +25,8 @@ type Config struct {
 	// TTL check config
 	Health   HealthConfig
 	KVRouter *KVRouterConfig
+	// If config implies use of consul, this options will be taken from consul KV.
+	// Otherwise it will be taken from config file.
 	Balancer *kvrouter_conf.BalancerConfig
 	Consul   *ConfigConsul
 }
@@ -99,17 +101,6 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	}
 	conf.Balancer = &balConfig
 	return nil
-}
-
-// If config implies use of consul, this options will be taken from consul KV.
-// Otherwise it will be taken from config file.
-type BalancerConfig struct {
-	//Amount of space filling curve dimensions
-	Dimensions uint64 `envconfig:"KVSTORE_SFC_DIMENSIONS"`
-	//Size of space filling curve
-	Size uint64 `envconfig:"KVSTORE_SFC_SIZE"`
-	//Space filling curve type
-	Curve CurveType `envconfig:"KVSTORE_SFC_CURVE"`
 }
 
 type KVRouterConfig struct {

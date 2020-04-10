@@ -1,7 +1,7 @@
 {
   "Mode": "kvrouter",
   "Address": "0.0.0.0:9191",
-  "RPCAddress": "127.0.0.1:9291",
+  "RPCAddress": "0.0.0.0:9291",
   "Power": 1,
   "Capacity":1,
   "DBPath": "/var/lib/kvstore/main.db",
