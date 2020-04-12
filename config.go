@@ -15,7 +15,7 @@ import (
 type Config struct {
 	//force name of node instead of hostname or consul
 	Name       *string `envconfig:"NAME"`
-	Address    string  `envconfig:"ADDRERSS"`
+	Address    string  `envconfig:"ADDRESS"`
 	RPCAddress string  `envconfig:"RPC_ADDRESS"`
 	//standalone, consul, kvrouter
 	Mode     DiscoverMode `envconfig:"MODE"`
