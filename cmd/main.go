@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
@@ -9,7 +8,6 @@ import (
 	kvrouter "github.com/struckoff/kvrouter/router"
 	"github.com/struckoff/kvstore"
 	bolt "go.etcd.io/bbolt"
-	"os"
 )
 
 func main() {
@@ -20,6 +18,7 @@ func main() {
 
 func run() error {
 	var conf kvstore.Config
+	var err error
 	var inn *kvstore.InternalNode
 	// If config implies use of consul, consul agent name  will be  used as name.
 	// Otherwise, hostname will be used instead.
@@ -27,15 +26,10 @@ func run() error {
 
 	cfgPath := flag.String("c", "config.json", "path to config file")
 	flag.Parse()
-	configFile, err := os.Open(*cfgPath)
+	conf, err = kvstore.ReadConfig(*cfgPath)
 	if err != nil {
-		return errors.Wrap(err, "failed to open config file")
+		return err
 	}
-	defer configFile.Close()
-	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
-		return errors.Wrap(err, "failed to parse config file")
-	}
-
 
 	if err := envconfig.Process("KVSTORE", &conf); err != nil {
 		return err

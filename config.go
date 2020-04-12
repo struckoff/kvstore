@@ -31,6 +31,19 @@ type Config struct {
 	Consul   *ConfigConsul
 }
 
+func ReadConfig(cfgPath string) (Config, error) {
+	configFile, err := os.Open(cfgPath)
+	if err != nil {
+		return Config{}, errors.Wrap(err, "failed to open config file")
+	}
+	defer configFile.Close()
+	var conf Config
+	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
+		return Config{}, errors.Wrap(err, "failed to parse config file")
+	}
+	return conf, nil
+}
+
 func (conf *Config) Prepare() error {
 	switch conf.Mode {
 	case StandaloneMode, KvrouterMode:
