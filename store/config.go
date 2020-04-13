@@ -1,15 +1,17 @@
-package kvstore
+package store
 
 import (
 	"encoding/json"
-	consulapi "github.com/hashicorp/consul/api"
-	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
-	kvrouter_conf "github.com/struckoff/kvrouter/config"
+	"github.com/struckoff/kvstore/router"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	consulapi "github.com/hashicorp/consul/api"
+	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
+	"github.com/struckoff/SFCFramework/curve"
 )
 
 type Config struct {
@@ -27,7 +29,7 @@ type Config struct {
 	KVRouter *KVRouterConfig
 	// If config implies use of consul, this options will be taken from consul KV.
 	// Otherwise it will be taken from config file.
-	Balancer *kvrouter_conf.BalancerConfig
+	Balancer *router.BalancerConfig
 	Consul   *ConfigConsul
 }
 
@@ -40,6 +42,12 @@ func ReadConfig(cfgPath string) (Config, error) {
 	var conf Config
 	if err := json.NewDecoder(configFile).Decode(&conf); err != nil {
 		return Config{}, errors.Wrap(err, "failed to parse config file")
+	}
+	if err := envconfig.Process("KVSTORE", &conf); err != nil {
+		return Config{}, err
+	}
+	if err := conf.Prepare(); err != nil {
+		return Config{}, err
 	}
 	return conf, nil
 }
@@ -92,7 +100,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 		pair.Key = strings.TrimLeft(pair.Key, conf.Consul.KVFolder)
 		kvMap[strings.ToLower(pair.Key)] = pair.Value
 	}
-	var balConfig kvrouter_conf.BalancerConfig
+	var balConfig router.BalancerConfig
 
 	if val, ok := kvMap["size"]; ok {
 		balConfig.Size, err = strconv.ParseUint(string(val), 10, 64)

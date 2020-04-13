@@ -1,0 +1,9 @@
+{
+  "Address": "0.0.0.0:9190",
+  "RPCAddress": "0.0.0.0:9290",
+  "Balancer":{
+    "Dimensions":3,
+    "Size":64,
+    "Curve": "morton"
+  }
+}

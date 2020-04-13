@@ -1,15 +1,16 @@
-package kvstore
+package store
 
 import (
 	"context"
-	kvrouter "github.com/struckoff/kvrouter/router"
-	"github.com/struckoff/kvrouter/rpcapi"
-	"google.golang.org/grpc"
 	"log"
 	"net"
+
+	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	"google.golang.org/grpc"
 )
 
-func (inn *InternalNode) RunRPCServer(conf *Config) error {
+func (inn *LocalNode) RunRPCServer(conf *Config) error {
 	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
 	if err != nil {
 		return err
@@ -27,14 +28,14 @@ func (inn *InternalNode) RunRPCServer(conf *Config) error {
 	return nil
 }
 
-func (inn *InternalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (*rpcapi.Empty, error) {
 	if err := inn.Store(in.Key, in.Value); err != nil {
 		return nil, err
 	}
 	return &rpcapi.Empty{}, nil
 }
 
-func (inn *InternalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (*rpcapi.Empty, error) {
 	log.Println("Receive keys")
 	if err := inn.StorePairs(in.KVs); err != nil {
 		return nil, err
@@ -42,7 +43,7 @@ func (inn *InternalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues
 	return &rpcapi.Empty{}, nil
 }
 
-func (inn *InternalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValue, error) {
+func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValue, error) {
 	b, err := inn.Receive(in.Key)
 	if err != nil {
 		return nil, err
@@ -50,21 +51,21 @@ func (inn *InternalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rp
 	return &rpcapi.KeyValue{Key: in.Key, Value: b}, nil
 }
 
-func (inn *InternalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.Empty, error) {
 	if err := inn.Remove(in.Key); err != nil {
 		return nil, err
 	}
 	return &rpcapi.Empty{}, nil
 }
 
-func (inn *InternalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi.ExploreRes, error) {
+func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi.ExploreRes, error) {
 	keys, err := inn.Explore()
 	if err != nil {
 		return nil, err
 	}
 	return &rpcapi.ExploreRes{Keys: keys}, nil
 }
-func (inn *InternalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
+func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
 	meta := &rpcapi.NodeMeta{
 		ID:         inn.ID(),
 		Address:    inn.HTTPAddress(),
@@ -75,16 +76,16 @@ func (inn *InternalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi
 	return meta, nil
 }
 
-func (inn *InternalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
-	var en kvrouter.Node
+func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
+	var en router.Node
 	var err error
 
-	res := make(map[kvrouter.Node][]string)
+	res := make(map[router.Node][]string)
 	for _, kl := range in.KL {
 		if inn.kvr != nil {
 			en, err = inn.kvr.GetNode(kl.Node.ID)
 		} else {
-			en, err = kvrouter.NewExternalNode(kl.Node)
+			en, err = router.NewExternalNode(kl.Node)
 		}
 		if err != nil {
 			return nil, err

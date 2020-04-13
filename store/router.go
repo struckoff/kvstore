@@ -1,32 +1,33 @@
-package kvstore
+package store
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"github.com/struckoff/kvrouter/rpcapi"
-	"google.golang.org/grpc"
 	"log"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	"google.golang.org/grpc"
 )
 
-// RunKVRouter - resister node in remote KVRouter.
+// RunRouter - resister node in remote KVRouter.
 // Run goroutine which sends heartbeat each Config.Health.CheckInterval
-func (inn *InternalNode) RunKVRouter(conf *Config) error {
+func (inn *LocalNode) RunRouter(conf *Config) error {
 	log.Printf("TRYING TO CONNECT TO KVROUTER [%s]", conf.KVRouter.Address)
-	c, err := kvClient(conf.KVRouter.Address)
+	c, err := client(conf.KVRouter.Address)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize kvrouter client")
 	}
 	inn.kvrAgent = c
-	if err := inn.kvrouterAnnounce(conf); err != nil {
+	if err := inn.routerAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in kvrouter")
 	}
 	log.Printf("CONNECTED TO KVROUTER [%s]", conf.KVRouter.Address)
 	return nil
 }
 
-// kvClient returns rpc client for kvrouter
-func kvClient(addr string) (rpcapi.RPCBalancerClient, error) {
+// client returns rpc client for kvrouter
+func client(addr string) (rpcapi.RPCBalancerClient, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure()) // TODO Make it secure
 	if err != nil {
 		return nil, err
@@ -35,8 +36,8 @@ func kvClient(addr string) (rpcapi.RPCBalancerClient, error) {
 	return c, nil
 }
 
-// kvrouterAnnounce - register node in kvrouter
-func (inn *InternalNode) kvrouterAnnounce(conf *Config) error {
+// routerAnnounce - register node in kvrouter
+func (inn *LocalNode) routerAnnounce(conf *Config) error {
 	checkInterval, err := time.ParseDuration(conf.Health.CheckInterval)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse health check interval")
@@ -56,13 +57,13 @@ func (inn *InternalNode) kvrouterAnnounce(conf *Config) error {
 	}
 
 	// Run TTL updater
-	go inn.updateTTLKVRoute(checkInterval)
+	go inn.updateTTLRoute(checkInterval)
 
 	return nil
 }
 
 //heartbeat
-func (inn *InternalNode) updateTTLKVRoute(interval time.Duration) {
+func (inn *LocalNode) updateTTLRoute(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	p := &rpcapi.Ping{
 		NodeID: inn.ID(),

@@ -1,8 +1,9 @@
-package kvstore
+package store
 
 import (
 	balancer "github.com/struckoff/SFCFramework"
-	kvrouter "github.com/struckoff/kvrouter/router"
+	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/rpcapi"
 	bolt "go.etcd.io/bbolt"
 	"io/ioutil"
 	"os"
@@ -23,7 +24,7 @@ func TestNewInternalNode(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *InternalNode
+		want *LocalNode
 	}{
 		{
 			name: "test",
@@ -35,12 +36,12 @@ func TestNewInternalNode(t *testing.T) {
 				c:     2.3,
 				db:    &bolt.DB{},
 			},
-			want: &InternalNode{
+			want: &LocalNode{
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         &bolt.DB{},
 			},
 		},
@@ -54,9 +55,9 @@ func TestNewInternalNode(t *testing.T) {
 				Power:      tt.args.p,
 				Capacity:   tt.args.c,
 			}
-			got := NewInternalNode(conf, tt.args.db, nil)
+			got := NewLocalNode(conf, tt.args.db, nil)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewInternalNode() = %v, want %v", got, tt.want)
+				t.Errorf("NewLocalNode() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -67,14 +68,14 @@ func TestInternalNode_Meta(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   kvrouter.NodeMeta
+		want   rpcapi.NodeMeta
 	}{
 		{
 			name: "test",
@@ -82,11 +83,11 @@ func TestInternalNode_Meta(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: kvrouter.NodeMeta{
+			want: rpcapi.NodeMeta{
 				ID:         "test_id",
 				Address:    "test_addr",
 				RPCAddress: "test_raddr",
@@ -97,7 +98,7 @@ func TestInternalNode_Meta(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -117,8 +118,8 @@ func TestInternalNode_Capacity(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -132,16 +133,16 @@ func TestInternalNode_Capacity(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: kvrouter.NewCapacity(2.3),
+			want: router.NewCapacity(2.3),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -161,8 +162,8 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -176,8 +177,8 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_addr",
@@ -185,7 +186,7 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -205,8 +206,8 @@ func TestInternalNode_ID(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -220,8 +221,8 @@ func TestInternalNode_ID(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_id",
@@ -229,7 +230,7 @@ func TestInternalNode_ID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -249,8 +250,8 @@ func TestInternalNode_Power(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -264,16 +265,16 @@ func TestInternalNode_Power(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: kvrouter.NewPower(1.1),
+			want: router.NewPower(1.1),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -293,8 +294,8 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          kvrouter.Power
-		c          kvrouter.Capacity
+		p          router.Power
+		c          router.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -308,8 +309,8 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          kvrouter.NewPower(1.1),
-				c:          kvrouter.NewCapacity(2.3),
+				p:          router.NewPower(1.1),
+				c:          router.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_raddr",
@@ -317,7 +318,7 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &InternalNode{
+			n := &LocalNode{
 				id:         tt.fields.id,
 				address:    tt.fields.address,
 				rpcaddress: tt.fields.rpcaddress,
@@ -419,7 +420,7 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			n := &InternalNode{
+			n := &LocalNode{
 				db: db,
 			}
 			for _, kv := range tt.args.kvs {

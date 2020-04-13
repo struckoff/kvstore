@@ -1,20 +1,21 @@
-package kvstore
+package store
 
 import (
 	"fmt"
-	consulapi "github.com/hashicorp/consul/api"
-	consulwatch "github.com/hashicorp/consul/api/watch"
-	"github.com/pkg/errors"
-	kvrouter "github.com/struckoff/kvrouter/router"
 	"log"
 	"strconv"
 	"strings"
 	"time"
+
+	consulapi "github.com/hashicorp/consul/api"
+	consulwatch "github.com/hashicorp/consul/api/watch"
+	"github.com/pkg/errors"
+	"github.com/struckoff/kvstore/router"
 )
 
-// RunKVRouter - register service in consul
+// RunRouter - register service in consul
 // Function register TTL check and sends heartbeat each Config.Health.CheckInterval
-func (inn *InternalNode) RunConsul(conf *Config) error {
+func (inn *LocalNode) RunConsul(conf *Config) error {
 	if err := inn.consulAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in consul")
 	}
@@ -25,7 +26,7 @@ func (inn *InternalNode) RunConsul(conf *Config) error {
 }
 
 // consulAnnounce - register node and TTL check in consul
-func (inn *InternalNode) consulAnnounce(conf *Config) (err error) {
+func (inn *LocalNode) consulAnnounce(conf *Config) (err error) {
 	checkID := inn.ID() + "_ttl"
 
 	addrParts := strings.Split(conf.RPCAddress, ":")
@@ -84,7 +85,7 @@ func (inn *InternalNode) consulAnnounce(conf *Config) (err error) {
 }
 
 // serviceWatch - cosul service watcher
-func (inn *InternalNode) consulWatch(conf *Config) error {
+func (inn *LocalNode) consulWatch(conf *Config) error {
 	filter := map[string]interface{}{
 		"type":    "service",
 		"service": conf.Consul.Service,
@@ -99,8 +100,8 @@ func (inn *InternalNode) consulWatch(conf *Config) error {
 }
 
 // serviceHandler - callback which calls on changes in service inside consul.
-func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
-	nCh := make(chan kvrouter.Node)
+func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
+	nCh := make(chan router.Node)
 	defer close(nCh)
 	entries, ok := data.([]*consulapi.ServiceEntry)
 	//fmt.Println(id, len(entries))
@@ -112,7 +113,7 @@ func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
 		go inn.registerExternalNode(entry.Node.Node, addr, nCh)
 	}
 	count := len(entries)
-	ns := make([]kvrouter.Node, 0, count)
+	ns := make([]router.Node, 0, count)
 	for node := range nCh {
 		count--
 		if node != nil {
@@ -135,12 +136,12 @@ func (inn *InternalNode) serviceHandler(id uint64, data interface{}) {
 
 //registerExternalNode - register nodes from consul in local kvrouter.
 // Function gather node information from nodes by RPC.
-func (inn *InternalNode) registerExternalNode(id, addr string, nCh chan<- kvrouter.Node) {
+func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- router.Node) {
 	if id == inn.ID() {
 		nCh <- inn
 		return
 	}
-	en, err := kvrouter.NewExternalNodeByAddr(addr)
+	en, err := router.NewExternalNodeByAddr(addr)
 	if err != nil {
 		log.Printf("unable to connect to node %s(%s)", id, addr)
 		nCh <- nil
@@ -151,8 +152,8 @@ func (inn *InternalNode) registerExternalNode(id, addr string, nCh chan<- kvrout
 }
 
 //keysLocations - returns keys which should be moved to another node
-func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
-	res := make(map[kvrouter.Node][]string)
+func (inn *LocalNode) keysLocations() (map[router.Node][]string, error) {
+	res := make(map[router.Node][]string)
 	keys, err := inn.Explore()
 	if err != nil {
 		return nil, err
@@ -170,7 +171,7 @@ func (inn *InternalNode) keysLocations() (map[kvrouter.Node][]string, error) {
 }
 
 // heartbeat
-func (inn *InternalNode) updateTTLConsul(interval time.Duration, checkID string) {
+func (inn *LocalNode) updateTTLConsul(interval time.Duration, checkID string) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for range ticker.C {

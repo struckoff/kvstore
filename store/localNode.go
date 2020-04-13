@@ -1,36 +1,37 @@
-package kvstore
+package store
 
 import (
-	consulapi "github.com/hashicorp/consul/api"
-	"github.com/pkg/errors"
-	balancer "github.com/struckoff/SFCFramework"
-	kvrouter "github.com/struckoff/kvrouter/router"
-	"github.com/struckoff/kvrouter/rpcapi"
-	bolt "go.etcd.io/bbolt"
-	"google.golang.org/grpc"
 	"log"
 	"net/http"
 	"sync"
+
+	consulapi "github.com/hashicorp/consul/api"
+	"github.com/pkg/errors"
+	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	bolt "go.etcd.io/bbolt"
+	"google.golang.org/grpc"
 )
 
 var mainBucket = []byte("pairs")
 
-// InternalNode represents local node
-type InternalNode struct {
+// LocalNode represents local node
+type LocalNode struct {
 	mu         sync.RWMutex
 	id         string
 	address    string
 	rpcaddress string
 	rpcserver  *grpc.Server
-	p          kvrouter.Power
-	c          kvrouter.Capacity
+	p          router.Power
+	c          router.Capacity
 	db         *bolt.DB
-	kvr        *kvrouter.Router
+	kvr        *router.Router
 	consul     *consulapi.Client
 	kvrAgent   rpcapi.RPCBalancerClient
 }
 
-func (inn *InternalNode) RunHTTPServer(addr string) error {
+func (inn *LocalNode) RunHTTPServer(addr string) error {
 	h := inn.kvr.HTTPHandler()
 	if err := http.ListenAndServe(addr, h); err != nil {
 		return err
@@ -39,42 +40,42 @@ func (inn *InternalNode) RunHTTPServer(addr string) error {
 }
 
 //ID returns the node's ID
-func (inn *InternalNode) ID() string {
+func (inn *LocalNode) ID() string {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.id
 }
 
 //RPCAddress returns the node's rpc address
-func (inn *InternalNode) RPCAddress() string {
+func (inn *LocalNode) RPCAddress() string {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.rpcaddress
 }
 
 //HTTPAddress returns the node's http address
-func (inn *InternalNode) HTTPAddress() string {
+func (inn *LocalNode) HTTPAddress() string {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.address
 }
 
 //Power returns the node's power
-func (inn *InternalNode) Power() balancer.Power {
+func (inn *LocalNode) Power() balancer.Power {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.p
 }
 
 //Capacity returns the node's capacity
-func (inn *InternalNode) Capacity() balancer.Capacity {
+func (inn *LocalNode) Capacity() balancer.Capacity {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.c
 }
 
 // Store value for a given key in local storage
-func (inn *InternalNode) Store(key string, body []byte) error {
+func (inn *LocalNode) Store(key string, body []byte) error {
 	return inn.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
@@ -85,7 +86,7 @@ func (inn *InternalNode) Store(key string, body []byte) error {
 }
 
 // Store KV pairs in local storage
-func (inn *InternalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
+func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
@@ -102,7 +103,7 @@ func (inn *InternalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 }
 
 // Return value for a given key from local storage
-func (inn *InternalNode) Receive(key string) ([]byte, error) {
+func (inn *LocalNode) Receive(key string) ([]byte, error) {
 	var body []byte
 	err := inn.db.View(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
@@ -116,7 +117,7 @@ func (inn *InternalNode) Receive(key string) ([]byte, error) {
 }
 
 // Remove value for a given key
-func (inn *InternalNode) Remove(key string) error {
+func (inn *LocalNode) Remove(key string) error {
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
@@ -131,14 +132,14 @@ func (inn *InternalNode) Remove(key string) error {
 }
 
 // Move values for a given keys to another node
-func (inn *InternalNode) Move(nk map[kvrouter.Node][]string) error {
+func (inn *LocalNode) Move(nk map[router.Node][]string) error {
 	var wg sync.WaitGroup
 	for en, keys := range nk {
 		if len(keys) == 0 {
 			continue
 		}
 		wg.Add(1)
-		go func(en kvrouter.Node, keys []string, wg *sync.WaitGroup) {
+		go func(en router.Node, keys []string, wg *sync.WaitGroup) {
 			defer wg.Done()
 			err := inn.db.Update(func(tx *bolt.Tx) error {
 				bc := tx.Bucket(mainBucket)
@@ -165,7 +166,7 @@ func (inn *InternalNode) Move(nk map[kvrouter.Node][]string) error {
 				log.Println(err)
 				return
 			}
-			log.Printf("%d keys relocated to node(%s)", len(keys),en.ID())
+			log.Printf("%d keys relocated to node(%s)", len(keys), en.ID())
 		}(en, keys, &wg)
 	}
 	wg.Wait()
@@ -173,7 +174,7 @@ func (inn *InternalNode) Move(nk map[kvrouter.Node][]string) error {
 }
 
 // Explore returns the list of keys in local storage.
-func (inn *InternalNode) Explore() ([]string, error) {
+func (inn *LocalNode) Explore() ([]string, error) {
 	res := make([]string, 0)
 	err := inn.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(mainBucket)
@@ -191,7 +192,7 @@ func (inn *InternalNode) Explore() ([]string, error) {
 }
 
 // Return meta information about the node
-func (inn *InternalNode) Meta() rpcapi.NodeMeta {
+func (inn *LocalNode) Meta() rpcapi.NodeMeta {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return rpcapi.NodeMeta{
@@ -203,14 +204,14 @@ func (inn *InternalNode) Meta() rpcapi.NodeMeta {
 	}
 }
 
-// Return new instance InternalNode.
-func NewInternalNode(conf *Config, db *bolt.DB, kvr *kvrouter.Router) *InternalNode {
-	return &InternalNode{
+// Return new instance LocalNode.
+func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) *LocalNode {
+	return &LocalNode{
 		id:         *conf.Name,
 		address:    conf.Address,
 		rpcaddress: conf.RPCAddress,
-		p:          kvrouter.NewPower(conf.Power),
-		c:          kvrouter.NewCapacity(conf.Capacity),
+		p:          router.NewPower(conf.Power),
+		c:          router.NewCapacity(conf.Capacity),
 		db:         db,
 		kvr:        kvr,
 	}

@@ -2,11 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
-	"github.com/struckoff/kvrouter/balancer_adapter"
-	kvrouter "github.com/struckoff/kvrouter/router"
-	"github.com/struckoff/kvstore"
+	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -17,25 +15,17 @@ func main() {
 }
 
 func run() error {
-	var conf kvstore.Config
+	var conf store.Config
 	var err error
-	var inn *kvstore.InternalNode
+	var inn *store.LocalNode
 	// If config implies use of consul, consul agent name  will be  used as name.
 	// Otherwise, hostname will be used instead.
 	errCh := make(chan error)
 
 	cfgPath := flag.String("c", "config.json", "path to config file")
 	flag.Parse()
-	conf, err = kvstore.ReadConfig(*cfgPath)
+	conf, err = store.ReadConfig(*cfgPath)
 	if err != nil {
-		return err
-	}
-
-	if err := envconfig.Process("KVSTORE", &conf); err != nil {
-		return err
-	}
-
-	if err := conf.Prepare(); err != nil {
 		return err
 	}
 
@@ -47,30 +37,30 @@ func run() error {
 	defer db.Close()
 
 	switch conf.Mode {
-	case kvstore.StandaloneMode, kvstore.ConsulMode:
-		bal, err := balancer_adapter.NewSFCBalancer(conf.Balancer)
+	case store.StandaloneMode, store.ConsulMode:
+		bal, err := router.NewSFCBalancer(conf.Balancer)
 		if err != nil {
 			return err
 		}
-		kvr, err := kvrouter.NewRouter(bal)
+		kvr, err := router.NewRouter(bal)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
 		//Initialize local node1
-		inn = kvstore.NewInternalNode(&conf, db, kvr)
+		inn = store.NewLocalNode(&conf, db, kvr)
 
 		//Run API servers
-		go func(errCh chan error, conf *kvstore.Config) {
+		go func(errCh chan error, conf *store.Config) {
 			if err := inn.RunHTTPServer(conf.Address); err != nil {
 				errCh <- errors.Wrap(err, "failed to run HTTP server")
 				return
 			}
 		}(errCh, &conf)
-	case kvstore.KvrouterMode:
-		inn = kvstore.NewInternalNode(&conf, db, nil)
+	case store.KvrouterMode:
+		inn = store.NewLocalNode(&conf, db, nil)
 	}
 
-	go func(errCh chan error, conf *kvstore.Config) {
+	go func(errCh chan error, conf *store.Config) {
 		if err := inn.RunRPCServer(conf); err != nil {
 			errCh <- errors.Wrap(err, "failed to run RPC server")
 			return
@@ -78,7 +68,7 @@ func run() error {
 	}(errCh, &conf)
 
 	//Run discovery connection
-	go func(errCh chan error, inn *kvstore.InternalNode, conf *kvstore.Config) {
+	go func(errCh chan error, inn *store.LocalNode, conf *store.Config) {
 		ds := discoveryService(conf.Mode, inn)
 		if err := ds(conf); err != nil {
 			errCh <- errors.Wrap(err, "failed to run discovery")
@@ -89,11 +79,11 @@ func run() error {
 	return <-errCh
 }
 
-func discoveryService(mode kvstore.DiscoverMode, inn *kvstore.InternalNode) func(conf *kvstore.Config) error {
+func discoveryService(mode store.DiscoverMode, inn *store.LocalNode) func(conf *store.Config) error {
 	switch mode {
-	case kvstore.KvrouterMode:
-		return inn.RunKVRouter
-	case kvstore.ConsulMode:
+	case store.KvrouterMode:
+		return inn.RunRouter
+	case store.ConsulMode:
 		return inn.RunConsul
 	}
 	return nil

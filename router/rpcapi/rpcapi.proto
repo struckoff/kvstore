@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package rpcapi;
+
+message KeyValue {
+	string Key = 1;
+	bytes Value = 2;
+}
+
+message Empty {}
+
+message KeyReq {
+	string Key = 1;
+}
+
+message MoveReq{
+	repeated KeyList KL = 1;
+}
+
+message KeyList{
+	NodeMeta Node = 1;
+	repeated string Keys = 2;
+}
+
+message NodeMeta {
+	string ID = 1;
+	string Address = 2;
+	string RPCAddress = 3;
+	double Power = 4;
+	double Capacity = 5;
+	HealthCheck Check = 6;
+}
+
+message HealthCheck {
+	string Timeout = 1;
+	string DeregisterCriticalServiceAfter = 2;
+}
+
+
+message NodeMetas {
+	repeated NodeMeta Metas = 1;
+}
+
+
+message ExploreRes {
+	repeated string Keys = 1;
+}
+
+message KeyValues {
+	repeated KeyValue KVs = 1;
+}
+
+service RPCNode {
+	rpc RPCStore (KeyValue) returns (Empty);
+	rpc RPCStorePairs (KeyValues) returns (Empty);
+	rpc RPCReceive (KeyReq) returns (KeyValue);
+	rpc RPCRemove (KeyReq) returns (Empty);
+	rpc RPCExplore (Empty) returns (ExploreRes);
+	rpc RPCMeta (Empty) returns (NodeMeta);
+	rpc RPCMove (MoveReq) returns (Empty);
+}
+
+service RPCBalancer {
+	rpc RPCRegister (NodeMeta) returns (Empty);
+	rpc RPCHeartbeat (Ping) returns (Empty);
+}
+
+message Ping {
+	string NodeID = 1;
+}

@@ -1,7 +1,6 @@
 FROM golang
 ENV GO111MODULE=on
 
-
 RUN mkdir /app
 RUN mkdir -p /var/lib/kvstore
 COPY . /app
