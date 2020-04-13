@@ -1,15 +1,16 @@
 package store
 
 import (
-	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/kvstore/router"
-	"github.com/struckoff/kvstore/router/rpcapi"
-	bolt "go.etcd.io/bbolt"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
+
+	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	bolt "go.etcd.io/bbolt"
 )
 
 func TestNewInternalNode(t *testing.T) {

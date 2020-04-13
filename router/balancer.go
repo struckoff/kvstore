@@ -2,6 +2,7 @@ package router
 
 import (
 	"errors"
+
 	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/SFCFramework/optimizer"
 	"github.com/struckoff/SFCFramework/transform"
@@ -25,7 +26,7 @@ func NewSFCBalancer(conf *BalancerConfig) (*SFCBalancer, error) {
 		conf.Curve.CurveType,
 		conf.Dimensions,
 		conf.Size,
-		transform.KVTransform,
+		transform.SpaceTransform,
 		optimizer.RangeOptimizer,
 		nil)
 	if err != nil {
@@ -56,7 +57,10 @@ func (sb *SFCBalancer) SetNodes(ns []Node) error {
 }
 
 func (sb *SFCBalancer) LocateKey(key string) (Node, error) {
-	di := DataItem(key)
+	di, err := NewSpaceDataItem(key)
+	if err != nil {
+		return nil, err
+	}
 	nb, err := sb.bal.LocateData(di)
 	if err != nil {
 		return nil, err
