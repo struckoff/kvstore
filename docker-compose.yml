@@ -1,0 +1,19 @@
+version: "3"
+services:
+
+  kvrouter:
+    image: kvrouter:latest
+    ports:
+      - 9190:9190
+  kvstore-0:
+    image: kvstore:latest
+    environment:
+      - KVSTORE_RPC_ADDRESS=kvstore-0:9291
+      - KVSTORE_KVROUTER_ADDRESS=kvrouter:9290
+    restart: always
+  kvstore-1:
+    image: kvstore:latest
+    environment:
+      - KVSTORE_RPC_ADDRESS=kvstore-1:9291
+      - KVSTORE_KVROUTER_ADDRESS=kvrouter:9290
+    restart: always
