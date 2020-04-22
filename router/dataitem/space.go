@@ -16,14 +16,14 @@ func NewSpaceDataItem(key string) (SpaceDataItem, error) {
 	return item, err
 }
 
-func (di SpaceDataItem) ID() string   { 
-	return string(di.Key) 
+func (di SpaceDataItem) ID() string {
+	return di.Key
 }
 
-func (di SpaceDataItem) Size() uint64 { 
-	return 1 
+func (di SpaceDataItem) Size() uint64 {
+	return 1
 }
 
 func (di SpaceDataItem) Values() []interface{} {
-	return []interface{di.Lat, di.Lon}
+	return []interface{}{di.Lat, di.Lon}
 }
