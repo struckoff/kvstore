@@ -141,7 +141,7 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- router.No
 		nCh <- inn
 		return
 	}
-	en, err := router.NewExternalNodeByAddr(addr)
+	en, err := router.NewExternalNodeByAddr(addr, inn.kvr.Hasher())
 	if err != nil {
 		log.Printf("unable to connect to node %s(%s)", id, addr)
 		nCh <- nil

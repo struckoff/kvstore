@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/pkg/errors"
+	"github.com/struckoff/SFCFramework/curve"
 	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
 )
@@ -42,12 +44,28 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		kvr, err := router.NewRouter(bal)
+		var hr nodehasher.Hasher
+		switch conf.Balancer.NodeHash {
+		case router.GeoSfc:
+			sfc, err := curve.NewCurve(conf.Balancer.Curve.CurveType, 2, bal.SFC().Bits())
+			if err != nil {
+				return errors.Wrap(err, "failed to create curve")
+			}
+			hr = nodehasher.NewGeoSfc(sfc)
+		case router.XXHash:
+			hr = nodehasher.NewXXHash()
+		default:
+			return errors.New("invalid node hasher")
+		}
+		kvr, err := router.NewRouter(bal, hr)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
 		//Initialize local node1
-		inn = store.NewLocalNode(&conf, db, kvr)
+		inn, err = store.NewLocalNode(&conf, db, kvr)
+		if err != nil {
+			return err
+		}
 
 		//Run API servers
 		go func(errCh chan error, conf *store.Config) {
@@ -57,7 +75,10 @@ func run() error {
 			}
 		}(errCh, &conf)
 	case store.KvrouterMode:
-		inn = store.NewLocalNode(&conf, db, nil)
+		inn, err = store.NewLocalNode(&conf, db, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	go func(errCh chan error, conf *store.Config) {

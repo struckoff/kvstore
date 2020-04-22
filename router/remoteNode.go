@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
 	"log"
@@ -19,6 +20,8 @@ type RemoteNode struct {
 	p          Power
 	c          Capacity
 	rpcclient  rpcapi.RPCNodeClient
+	geo        *rpcapi.GeoData
+	h          uint64
 }
 
 // ID  returns the node ID
@@ -37,6 +40,12 @@ func (n *RemoteNode) Capacity() balancer.Capacity {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.c
+}
+
+func (n *RemoteNode) Hash() uint64 {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.h
 }
 
 //Save value for a given key on the remote node
@@ -90,10 +99,10 @@ func (n *RemoteNode) Remove(key string) error {
 }
 
 // Return meta information about the node
-func (n *RemoteNode) Meta() rpcapi.NodeMeta {
+func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
-	return rpcapi.NodeMeta{
+	return &rpcapi.NodeMeta{
 		ID:         n.id,
 		Address:    n.address,
 		RPCAddress: n.rpcaddress,
@@ -108,7 +117,7 @@ func (n *RemoteNode) Move(nk map[Node][]string) error {
 	for en, keys := range nk {
 		meta := en.Meta()
 		kl := &rpcapi.KeyList{
-			Node: &meta,
+			Node: meta,
 			Keys: keys,
 		}
 		mr.KL = append(mr.KL, kl)
@@ -118,12 +127,19 @@ func (n *RemoteNode) Move(nk map[Node][]string) error {
 }
 
 // NewExternalNode - create a new instance of an external by given meta information.
-func NewExternalNode(meta *rpcapi.NodeMeta) (*RemoteNode, error) {
+func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNode, error) {
 	conn, err := grpc.Dial(meta.RPCAddress, grpc.WithInsecure()) // TODO Make it secure
 	if err != nil {
 		return nil, err
 	}
 	c := rpcapi.NewRPCNodeClient(conn)
+	var hashsum uint64
+	if hasher != nil {
+		hashsum, err = hasher.Sum(meta)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &RemoteNode{
 		id:         meta.ID,
 		address:    meta.Address,
@@ -131,12 +147,13 @@ func NewExternalNode(meta *rpcapi.NodeMeta) (*RemoteNode, error) {
 		p:          NewPower(meta.Power),
 		c:          NewCapacity(meta.Capacity),
 		rpcclient:  c,
+		h:          hashsum,
 	}, nil
 }
 
 // NewExternalNodeByAddr - create a new instance of an external node.
 // Function asks remote node for it meta information by RPC
-func NewExternalNodeByAddr(rpcaddr string) (*RemoteNode, error) {
+func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNode, error) {
 	c, err := enClient(rpcaddr)
 	if err != nil {
 		return nil, err
@@ -145,6 +162,10 @@ func NewExternalNodeByAddr(rpcaddr string) (*RemoteNode, error) {
 	if err != nil {
 		return nil, err
 	}
+	hashsum, err := hasher.Sum(meta)
+	if err != nil {
+		return nil, err
+	}
 	return &RemoteNode{
 		id:         meta.ID,
 		address:    meta.Address,
@@ -152,6 +173,7 @@ func NewExternalNodeByAddr(rpcaddr string) (*RemoteNode, error) {
 		p:          NewPower(meta.Power),
 		c:          NewCapacity(meta.Capacity),
 		rpcclient:  c,
+		h:          hashsum,
 	}, nil
 }
 

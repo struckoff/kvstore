@@ -1,11 +1,12 @@
 package router
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/SFCFramework/curve"
 	"github.com/struckoff/SFCFramework/optimizer"
 	"github.com/struckoff/SFCFramework/transform"
+	"github.com/struckoff/kvstore/router/dataitem"
 )
 
 type Balancer interface {
@@ -26,7 +27,7 @@ func NewSFCBalancer(conf *BalancerConfig) (*SFCBalancer, error) {
 		conf.Curve.CurveType,
 		conf.Dimensions,
 		conf.Size,
-		transform.SpaceTransform,
+		transform.KVTransform,
 		optimizer.RangeOptimizer,
 		nil)
 	if err != nil {
@@ -57,10 +58,11 @@ func (sb *SFCBalancer) SetNodes(ns []Node) error {
 }
 
 func (sb *SFCBalancer) LocateKey(key string) (Node, error) {
-	di, err := NewSpaceDataItem(key)
-	if err != nil {
-		return nil, err
-	}
+	//di, err := dataitem.NewSpaceDataItem(key)
+	//if err != nil {
+	//	return nil, err
+	//}
+	di := dataitem.NewKVDataItem(key)
 	nb, err := sb.bal.LocateData(di)
 	if err != nil {
 		return nil, err
@@ -95,4 +97,8 @@ func (sb *SFCBalancer) GetNode(id string) (Node, error) {
 		return nil, errors.New("wrong node type")
 	}
 	return n, nil
+}
+
+func (sb *SFCBalancer) SFC() curve.Curve {
+	return sb.bal.SFC()
 }

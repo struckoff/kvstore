@@ -20,7 +20,8 @@ type BalancerConfig struct {
 	//Size of space filling curve
 	Size uint64 `envconfig:"KVROUTER_SFC_SIZE"`
 	//Space filling curve type
-	Curve CurveType `envconfig:"KVROUTER_SFC_CURVE"`
+	Curve    CurveType    `envconfig:"KVROUTER_SFC_CURVE"`
+	NodeHash NodeHashType `envconfig:"KVROUTER_NODE_HASH"`
 }
 
 type CurveType struct {
@@ -40,4 +41,27 @@ func (ct *CurveType) UnmarshalJSON(cb []byte) error {
 	default:
 		return errors.New("unknown curve type")
 	}
+}
+
+// TODO: consider using plugins
+type NodeHashType int
+
+const (
+	_ NodeHashType = iota
+	GeoSfc
+	XXHash
+)
+
+func (dn *NodeHashType) UnmarshalJSON(cb []byte) error {
+	c := strings.ToLower(string(cb))
+	c = strings.Trim(c, "\"")
+	switch c {
+	case "geosfc":
+		*dn = GeoSfc
+	case "xxhash":
+		*dn = XXHash
+	default:
+		return errors.New("wrong node hash type")
+	}
+	return nil
 }

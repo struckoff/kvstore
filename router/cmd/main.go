@@ -7,6 +7,7 @@ import (
 	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
+	"log"
 	"net"
 	"os"
 )
@@ -71,6 +72,7 @@ func RunRPCServer(h rpcapi.RPCBalancerServer, conf *router.Config) error {
 	s := grpc.NewServer()
 	rpcapi.RegisterRPCBalancerServer(s, h)
 
+	log.Printf("RUN RPC Server [%s]", conf.RPCAddress)
 	if err := s.Serve(inbound); err != nil {
 		return err
 	}

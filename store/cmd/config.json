@@ -11,6 +11,10 @@
     "CheckTimeout": "10s",
     "DeregisterCriticalServiceAfter": "10s"
   },
+"Geo":{
+  "Latitude":0.0,
+  "Longitude":0.0
+},
   "KVRouter": {
     "Address": "127.0.0.1:9290"
   },

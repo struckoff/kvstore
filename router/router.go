@@ -2,18 +2,21 @@ package router
 
 import (
 	"github.com/pkg/errors"
+	"github.com/struckoff/kvstore/router/nodehasher"
 )
 
 // Router represents bounding of network api with kvrouter lib and local node
 type Router struct {
-	bal Balancer
+	bal    Balancer
+	hasher nodehasher.Hasher
 }
 
-func NewRouter(bal Balancer) (*Router, error) {
-	h := &Router{
-		bal: bal,
+func NewRouter(bal Balancer, h nodehasher.Hasher) (*Router, error) {
+	r := &Router{
+		bal:    bal,
+		hasher: h,
 	}
-	return h, nil
+	return r, nil
 }
 
 // AddNode adds node to kvrouter
@@ -53,4 +56,8 @@ func (h *Router) SetNodes(ns []Node) error {
 // GetNode returns the node with the given ID
 func (h *Router) GetNode(id string) (Node, error) {
 	return h.bal.GetNode(id)
+}
+
+func (h *Router) Hasher() nodehasher.Hasher {
+	return h.hasher
 }

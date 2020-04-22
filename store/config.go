@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/rpcapi"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ type Config struct {
 	Name       *string `envconfig:"NAME"`
 	Address    string  `envconfig:"ADDRESS"`
 	RPCAddress string  `envconfig:"RPC_ADDRESS"`
+	Geo        *rpcapi.GeoData
 	//standalone, consul, kvrouter
 	Mode     DiscoverMode `envconfig:"MODE"`
 	Power    float64      `envconfig:"POWER"`
@@ -242,7 +244,8 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 type DiscoverMode int
 
 const (
-	StandaloneMode DiscoverMode = iota
+	_ DiscoverMode = iota
+	StandaloneMode
 	KvrouterMode
 	ConsulMode
 )

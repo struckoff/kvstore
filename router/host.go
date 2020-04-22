@@ -2,6 +2,8 @@ package router
 
 import (
 	"context"
+	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/router/nodehasher"
 	"log"
 	"net/http"
 	"sync"
@@ -17,13 +19,13 @@ type Host struct {
 }
 
 func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
-	en, err := NewExternalNode(in)
+	en, err := NewExternalNode(in, h.kvr.Hasher())
 	if err != nil {
 		return nil, err
 	}
 
-	onDead := deadHandler(en.ID())
-	onRemove := h.removeHandler(en.ID())
+	onDead := onDeadHandler(en.ID())
+	onRemove := h.onRemoveHandler(en.ID())
 	check, err := ttl.NewTTLCheck(in.Check, onDead, onRemove)
 	if err != nil {
 		return nil, err
@@ -40,7 +42,7 @@ func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Em
 }
 func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty, error) {
 	if ok := h.checks.Update(in.NodeID); !ok {
-		return nil, errors.Errorf("unable to found check for node(%s)", in.NodeID)
+		return nil, errors.Errorf("unable to find check for node(%s)", in.NodeID)
 	}
 	return &rpcapi.Empty{}, nil
 }
@@ -53,12 +55,12 @@ func (h *Host) RunHTTPServer(addr string) error {
 	return nil
 }
 
-func deadHandler(nodeID string) func() {
+func onDeadHandler(nodeID string) func() {
 	return func() {
 		log.Printf("node(%s) seems to be dead", nodeID)
 	}
 }
-func (h *Host) removeHandler(nodeID string) func() {
+func (h *Host) onRemoveHandler(nodeID string) func() {
 	return func() {
 		if err := h.kvr.RemoveNode(nodeID); err != nil {
 			log.Printf("Error removing node(%s): %s", nodeID, err.Error())
@@ -105,11 +107,24 @@ func (h *Host) redistributeKeys() error {
 }
 
 func NewHost(conf *Config) (*Host, error) {
-	bal, err := NewSFCBalancer(conf.Balancer)
+	b, err := NewSFCBalancer(conf.Balancer)
 	if err != nil {
 		return nil, err
 	}
-	kvr, err := NewRouter(bal)
+	var hr nodehasher.Hasher
+	switch conf.Balancer.NodeHash {
+	case GeoSfc:
+		sfc, err := curve.NewCurve(conf.Balancer.Curve.CurveType, 2, b.SFC().Bits())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create curve")
+		}
+		hr = nodehasher.NewGeoSfc(sfc)
+	case XXHash:
+		hr = nodehasher.NewXXHash()
+	default:
+		return nil, errors.New("invalid node hasher")
+	}
+	kvr, err := NewRouter(b, hr)
 	if err != nil {
 		return nil, err
 	}

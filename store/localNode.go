@@ -29,6 +29,8 @@ type LocalNode struct {
 	kvr        *router.Router
 	consul     *consulapi.Client
 	kvrAgent   rpcapi.RPCBalancerClient
+	geo        *rpcapi.GeoData
+	h          uint64
 }
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {
@@ -72,6 +74,18 @@ func (inn *LocalNode) Capacity() balancer.Capacity {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
 	return inn.c
+}
+
+func (inn *LocalNode) Hash() uint64 {
+	inn.mu.RLock()
+	defer inn.mu.RUnlock()
+	return inn.h
+}
+
+func (inn *LocalNode) SetHash(h uint64) {
+	inn.mu.Lock()
+	defer inn.mu.Unlock()
+	inn.h = h
 }
 
 // Store value for a given key in local storage
@@ -192,21 +206,26 @@ func (inn *LocalNode) Explore() ([]string, error) {
 }
 
 // Return meta information about the node
-func (inn *LocalNode) Meta() rpcapi.NodeMeta {
+func (inn *LocalNode) Meta() *rpcapi.NodeMeta {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
-	return rpcapi.NodeMeta{
+	return inn.meta()
+}
+
+func (inn *LocalNode) meta() *rpcapi.NodeMeta {
+	return &rpcapi.NodeMeta{
 		ID:         inn.ID(),
 		Address:    inn.HTTPAddress(),
 		RPCAddress: inn.RPCAddress(),
 		Power:      inn.Power().Get(),
 		Capacity:   inn.Capacity().Get(),
+		Geo:        inn.geo,
 	}
 }
 
 // Return new instance LocalNode.
-func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) *LocalNode {
-	return &LocalNode{
+func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, error) {
+	ln := &LocalNode{
 		id:         *conf.Name,
 		address:    conf.Address,
 		rpcaddress: conf.RPCAddress,
@@ -214,5 +233,19 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) *LocalNode {
 		c:          router.NewCapacity(conf.Capacity),
 		db:         db,
 		kvr:        kvr,
+		geo:        conf.Geo,
 	}
+	if kvr != nil {
+		h, err := kvr.Hasher().Sum(ln.meta())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to calculate hash sum")
+		}
+		ln.h = h
+	}
+	return ln, nil
 }
+
+//func MakeHasher(conf *router.BalancerConfig) Hasher{
+//	switch conf.NodeHash:
+//
+//}

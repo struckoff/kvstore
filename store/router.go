@@ -52,7 +52,7 @@ func (inn *LocalNode) routerAnnounce(conf *Config) error {
 		Timeout:                        (checkInterval + checkTimeout).String(),
 		DeregisterCriticalServiceAfter: conf.Health.DeregisterCriticalServiceAfter,
 	}
-	if _, err := inn.kvrAgent.RPCRegister(context.TODO(), &meta); err != nil {
+	if _, err := inn.kvrAgent.RPCRegister(context.TODO(), meta); err != nil {
 		return errors.Wrap(err, "failed to register node in kvrouter")
 	}
 

@@ -22,6 +22,10 @@ message KeyList{
 	repeated string Keys = 2;
 }
 
+message NodeMetas {
+	repeated NodeMeta Metas = 1;
+}
+
 message NodeMeta {
 	string ID = 1;
 	string Address = 2;
@@ -29,6 +33,7 @@ message NodeMeta {
 	double Power = 4;
 	double Capacity = 5;
 	HealthCheck Check = 6;
+	GeoData Geo = 7;
 }
 
 message HealthCheck {
@@ -36,11 +41,10 @@ message HealthCheck {
 	string DeregisterCriticalServiceAfter = 2;
 }
 
-
-message NodeMetas {
-	repeated NodeMeta Metas = 1;
+message GeoData{
+	double Longitude = 1;
+	double Latitude = 2;
 }
-
 
 message ExploreRes {
 	repeated string Keys = 1;

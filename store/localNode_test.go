@@ -56,7 +56,7 @@ func TestNewInternalNode(t *testing.T) {
 				Power:      tt.args.p,
 				Capacity:   tt.args.c,
 			}
-			got := NewLocalNode(conf, tt.args.db, nil)
+			got, _ := NewLocalNode(conf, tt.args.db, nil)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewLocalNode() = %v, want %v", got, tt.want)
 			}

@@ -1,4 +1,4 @@
-package router
+package dataitem
 
 import "encoding/json"
 

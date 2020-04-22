@@ -85,7 +85,7 @@ func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.
 		if inn.kvr != nil {
 			en, err = inn.kvr.GetNode(kl.Node.ID)
 		} else {
-			en, err = router.NewExternalNode(kl.Node)
+			en, err = router.NewExternalNode(kl.Node, nil)
 		}
 		if err != nil {
 			return nil, err
