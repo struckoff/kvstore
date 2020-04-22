@@ -10,20 +10,13 @@ let p_host = "http://localhost:9190"
 
 export let options = {
     tags: {
-        "name": "store k/v"
+        "name": "receive k/v"
     },
 //   minIterationDuration: "100ms"
 };
 
-function randomPoint(){
-    // var timeInMs = Date.now() - Math.floor(Math.random());
-    var timeInMs = Date.now();
-    var val = Math.random() + 10
-    return timeInMs + ';' + val
-}
-
 export default function() {
-    var res = http.post(p_host + "/put/kkk", randomPoint(), {tags: {name: 'post_upload_kv'}});
+    var res = http.get(p_host + "/get/kkk", {tags: {name: 'get_receive_kv'}});
     if (res.status >= 400){
         console.error(res.body)
     }

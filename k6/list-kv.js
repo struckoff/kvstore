@@ -10,13 +10,13 @@ let p_host = "http://localhost:9190"
 
 export let options = {
     tags: {
-        "name": "receive k/v"
+        "name": "list k/v"
     },
 //   minIterationDuration: "100ms"
 };
 
 export default function() {
-    var res = http.get(p_host + "/get/kkk", {tags: {name: 'get_receive_kv'}});
+    var res = http.get(p_host + "/list", {tags: {name: 'get_list_kv'}});
     if (res.status >= 400){
         console.error(res.body)
     }
