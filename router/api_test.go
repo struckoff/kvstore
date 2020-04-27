@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/struckoff/kvstore/router/balanceradapter"
+	"github.com/struckoff/kvstore/router/nodes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +19,7 @@ func TestRouter_HTTPHandler(t *testing.T) {
 		body   io.Reader
 	}
 	type fields struct {
-		bal Balancer
+		bal balanceradapter.Balancer
 	}
 	tests := []struct {
 		name   string
@@ -33,10 +35,10 @@ func TestRouter_HTTPHandler(t *testing.T) {
 				body:   nil,
 			},
 			fields: fields{
-				bal: mockBalancer{nodes: []Node{
-					mockNode{id: "mnode-0"},
-					mockNode{id: "mnode-1"},
-					mockNode{id: "mnode-2"},
+				bal: mockBalancer{nodes: []nodes.Node{
+					nodes.mockNode{id: "mnode-0"},
+					nodes.mockNode{id: "mnode-1"},
+					nodes.mockNode{id: "mnode-2"},
 				}},
 			},
 			want: &httptest.ResponseRecorder{
@@ -53,15 +55,15 @@ func TestRouter_HTTPHandler(t *testing.T) {
 			},
 			fields: fields{
 				bal: mockBalancer{
-					nodes: []Node{
-						mockNode{
+					nodes: []nodes.Node{
+						nodes.mockNode{
 							id: "mnode-0",
 							kv: map[string][]byte{
 								"mnode-0-key-0": nil,
 								"mnode-0-key-1": nil,
 								"mnode-0-key-2": nil,
 							}},
-						mockNode{
+						nodes.mockNode{
 							id: "mnode-1",
 							kv: map[string][]byte{
 								"mnode-1-key-0": nil,
@@ -141,11 +143,11 @@ func TestRouter_HTTPHandler(t *testing.T) {
 }
 
 type mockBalancer struct {
-	nodes []Node
+	nodes []nodes.Node
 	kv    map[string][]byte
 }
 
-func (bal mockBalancer) AddNode(n Node) error {
+func (bal mockBalancer) AddNode(n nodes.Node) error {
 	bal.nodes = append(bal.nodes, n)
 	return nil
 }
@@ -154,20 +156,20 @@ func (m mockBalancer) RemoveNode(id string) error {
 	panic("implement me")
 }
 
-func (m mockBalancer) SetNodes(ns []Node) error {
+func (m mockBalancer) SetNodes(ns []nodes.Node) error {
 	m.nodes = ns
 	return nil
 }
 
-func (m mockBalancer) LocateKey(key string) (Node, error) {
-	return mockNode{id: key, kv: m.kv}, nil
+func (m mockBalancer) LocateData(key string) (nodes.Node, error) {
+	return nodes.mockNode{id: key, kv: m.kv}, nil
 }
 
-func (m mockBalancer) Nodes() ([]Node, error) {
+func (m mockBalancer) Nodes() ([]nodes.Node, error) {
 	return m.nodes, nil
 }
 
-func (m mockBalancer) GetNode(id string) (Node, error) {
+func (m mockBalancer) GetNode(id string) (nodes.Node, error) {
 	for _, n := range m.nodes {
 		if n.ID() == id {
 			return n, nil

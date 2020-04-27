@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"strconv"
 	"strings"
@@ -10,7 +11,6 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	consulwatch "github.com/hashicorp/consul/api/watch"
 	"github.com/pkg/errors"
-	"github.com/struckoff/kvstore/router"
 )
 
 // RunRouter - register service in consul
@@ -101,7 +101,7 @@ func (inn *LocalNode) consulWatch(conf *Config) error {
 
 // serviceHandler - callback which calls on changes in service inside consul.
 func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
-	nCh := make(chan router.Node)
+	nCh := make(chan nodes.Node)
 	defer close(nCh)
 	entries, ok := data.([]*consulapi.ServiceEntry)
 	//fmt.Println(id, len(entries))
@@ -113,7 +113,7 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 		go inn.registerExternalNode(entry.Node.Node, addr, nCh)
 	}
 	count := len(entries)
-	ns := make([]router.Node, 0, count)
+	ns := make([]nodes.Node, 0, count)
 	for node := range nCh {
 		count--
 		if node != nil {
@@ -136,12 +136,12 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 
 //registerExternalNode - register nodes from consul in local kvrouter.
 // Function gather node information from nodes by RPC.
-func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- router.Node) {
+func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- nodes.Node) {
 	if id == inn.ID() {
 		nCh <- inn
 		return
 	}
-	en, err := router.NewExternalNodeByAddr(addr, inn.kvr.Hasher())
+	en, err := nodes.NewExternalNodeByAddr(addr, inn.kvr.Hasher())
 	if err != nil {
 		log.Printf("unable to connect to node %s(%s)", id, addr)
 		nCh <- nil
@@ -152,8 +152,8 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- router.No
 }
 
 //keysLocations - returns keys which should be moved to another node
-func (inn *LocalNode) keysLocations() (map[router.Node][]string, error) {
-	res := make(map[router.Node][]string)
+func (inn *LocalNode) keysLocations() (map[nodes.Node][]string, error) {
+	res := make(map[nodes.Node][]string)
 	keys, err := inn.Explore()
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package router
+package nodes
 
 type Capacity struct {
 	c float64

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net/http"
 	"sync"
@@ -23,8 +24,8 @@ type LocalNode struct {
 	address    string
 	rpcaddress string
 	rpcserver  *grpc.Server
-	p          router.Power
-	c          router.Capacity
+	p          nodes.Power
+	c          nodes.Capacity
 	db         *bolt.DB
 	kvr        *router.Router
 	consul     *consulapi.Client
@@ -146,14 +147,14 @@ func (inn *LocalNode) Remove(key string) error {
 }
 
 // Move values for a given keys to another node
-func (inn *LocalNode) Move(nk map[router.Node][]string) error {
+func (inn *LocalNode) Move(nk map[nodes.Node][]string) error {
 	var wg sync.WaitGroup
 	for en, keys := range nk {
 		if len(keys) == 0 {
 			continue
 		}
 		wg.Add(1)
-		go func(en router.Node, keys []string, wg *sync.WaitGroup) {
+		go func(en nodes.Node, keys []string, wg *sync.WaitGroup) {
 			defer wg.Done()
 			err := inn.db.Update(func(tx *bolt.Tx) error {
 				bc := tx.Bucket(mainBucket)
@@ -229,8 +230,8 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, er
 		id:         *conf.Name,
 		address:    conf.Address,
 		rpcaddress: conf.RPCAddress,
-		p:          router.NewPower(conf.Power),
-		c:          router.NewCapacity(conf.Capacity),
+		p:          nodes.NewPower(conf.Power),
+		c:          nodes.NewCapacity(conf.Capacity),
 		db:         db,
 		kvr:        kvr,
 		geo:        conf.Geo,

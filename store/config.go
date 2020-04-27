@@ -2,7 +2,7 @@ package store
 
 import (
 	"encoding/json"
-	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"os"
 	"strconv"
@@ -31,7 +31,7 @@ type Config struct {
 	KVRouter *KVRouterConfig
 	// If config implies use of consul, this options will be taken from consul KV.
 	// Otherwise it will be taken from config file.
-	Balancer *router.BalancerConfig
+	Balancer *config.BalancerConfig
 	Consul   *ConfigConsul
 }
 
@@ -102,23 +102,23 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 		pair.Key = strings.TrimLeft(pair.Key, conf.Consul.KVFolder)
 		kvMap[strings.ToLower(pair.Key)] = pair.Value
 	}
-	var balConfig router.BalancerConfig
+	var balConfig config.BalancerConfig
 
 	if val, ok := kvMap["size"]; ok {
-		balConfig.Size, err = strconv.ParseUint(string(val), 10, 64)
+		balConfig.SFC.Size, err = strconv.ParseUint(string(val), 10, 64)
 		if err != nil {
 			return err
 		}
 	}
 
 	if val, ok := kvMap["dimensions"]; ok {
-		balConfig.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
+		balConfig.SFC.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
 		if err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["curve"]; ok {
-		if err := balConfig.Curve.UnmarshalJSON(val); err != nil {
+		if err := balConfig.SFC.Curve.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
@@ -244,8 +244,7 @@ func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 type DiscoverMode int
 
 const (
-	_ DiscoverMode = iota
-	StandaloneMode
+	StandaloneMode DiscoverMode = iota + 1
 	KvrouterMode
 	ConsulMode
 )

@@ -1,6 +1,9 @@
 package dataitem
 
-import "encoding/json"
+import (
+	"encoding/json"
+	balancer "github.com/struckoff/SFCFramework"
+)
 
 // SpaceDataItem represents geospatial key as balancer item
 type SpaceDataItem struct {
@@ -9,7 +12,7 @@ type SpaceDataItem struct {
 	Lon float64
 }
 
-func NewSpaceDataItem(key string) (SpaceDataItem, error) {
+func NewSpaceDataItem(key string) (balancer.DataItem, error) {
 	var item SpaceDataItem
 	err := json.Unmarshal([]byte(key), &item)
 	item.Key = key

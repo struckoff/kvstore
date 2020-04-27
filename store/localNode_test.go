@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/struckoff/kvstore/router/nodes"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -8,7 +9,6 @@ import (
 	"testing"
 
 	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	bolt "go.etcd.io/bbolt"
 )
@@ -41,8 +41,8 @@ func TestNewInternalNode(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         &bolt.DB{},
 			},
 		},
@@ -69,8 +69,8 @@ func TestInternalNode_Meta(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -84,8 +84,8 @@ func TestInternalNode_Meta(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: rpcapi.NodeMeta{
@@ -119,8 +119,8 @@ func TestInternalNode_Capacity(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -134,11 +134,11 @@ func TestInternalNode_Capacity(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: router.NewCapacity(2.3),
+			want: nodes.NewCapacity(2.3),
 		},
 	}
 	for _, tt := range tests {
@@ -163,8 +163,8 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -178,8 +178,8 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_addr",
@@ -207,8 +207,8 @@ func TestInternalNode_ID(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -222,8 +222,8 @@ func TestInternalNode_ID(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_id",
@@ -251,8 +251,8 @@ func TestInternalNode_Power(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -266,11 +266,11 @@ func TestInternalNode_Power(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: router.NewPower(1.1),
+			want: nodes.NewPower(1.1),
 		},
 	}
 	for _, tt := range tests {
@@ -295,8 +295,8 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 		id         string
 		address    string
 		rpcaddress string
-		p          router.Power
-		c          router.Capacity
+		p          nodes.Power
+		c          nodes.Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -310,8 +310,8 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 				id:         "test_id",
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
-				p:          router.NewPower(1.1),
-				c:          router.NewCapacity(2.3),
+				p:          nodes.NewPower(1.1),
+				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_raddr",

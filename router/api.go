@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"github.com/struckoff/kvstore/router/nodes"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"io/ioutil"
 	"log"
@@ -123,7 +124,7 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 	}
 	for _, n := range ns {
 		wg.Add(1)
-		go func(wg *sync.WaitGroup, n Node, sm *SyncMap) {
+		go func(wg *sync.WaitGroup, n nodes.Node, sm *SyncMap) {
 			defer wg.Done()
 			keys, err := n.Explore()
 			if err != nil {

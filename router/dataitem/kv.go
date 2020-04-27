@@ -1,9 +1,11 @@
 package dataitem
 
+import balancer "github.com/struckoff/SFCFramework"
+
 type KVDataItem string
 
-func NewKVDataItem(key string) KVDataItem {
-	return KVDataItem(key)
+func NewKVDataItem(key string) (balancer.DataItem, error) {
+	return KVDataItem(key), nil
 }
 
 func (di KVDataItem) ID() string {

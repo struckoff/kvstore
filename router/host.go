@@ -3,7 +3,11 @@ package router
 import (
 	"context"
 	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/router/balanceradapter"
+	"github.com/struckoff/kvstore/router/config"
+	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
+	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net/http"
 	"sync"
@@ -19,7 +23,7 @@ type Host struct {
 }
 
 func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
-	en, err := NewExternalNode(in, h.kvr.Hasher())
+	en, err := nodes.NewExternalNode(in, h.kvr.Hasher())
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +86,8 @@ func (h *Host) redistributeKeys() error {
 		return err
 	}
 	for _, n := range ns {
-		go func(n Node, wg *sync.WaitGroup) {
-			res := make(map[Node][]string)
+		go func(n nodes.Node, wg *sync.WaitGroup) {
+			res := make(map[nodes.Node][]string)
 			keys, err := n.Explore()
 			if err != nil {
 				log.Printf("failed to explore node(%s): %s", n.ID(), err.Error())
@@ -106,25 +110,40 @@ func (h *Host) redistributeKeys() error {
 	return nil
 }
 
-func NewHost(conf *Config) (*Host, error) {
-	b, err := NewSFCBalancer(conf.Balancer)
-	if err != nil {
-		return nil, err
-	}
+func NewHost(conf *config.Config) (*Host, error) {
+	var err error
+	var bal balanceradapter.Balancer
 	var hr nodehasher.Hasher
+
+	switch conf.Balancer.Mode {
+	case config.ConsistentMode:
+		bal = balanceradapter.NewConsistentBalancer(conf.Balancer.Ring)
+	case config.SFCMode:
+		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	switch conf.Balancer.NodeHash {
-	case GeoSfc:
-		sfc, err := curve.NewCurve(conf.Balancer.Curve.CurveType, 2, b.SFC().Bits())
+	case config.GeoSfc:
+		sb := bal.(*balanceradapter.SFC)
+		sfc, err := curve.NewCurve(conf.Balancer.SFC.Curve.CurveType, 2, sb.SFC().Bits())
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create curve")
 		}
 		hr = nodehasher.NewGeoSfc(sfc)
-	case XXHash:
+	case config.XXHash:
 		hr = nodehasher.NewXXHash()
 	default:
 		return nil, errors.New("invalid node hasher")
 	}
-	kvr, err := NewRouter(b, hr)
+
+	ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
+	if err != nil {
+		return nil, err
+	}
+	kvr, err := NewRouter(bal, hr, ndf)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package router
+package nodes
 
 import (
 	balancer "github.com/struckoff/SFCFramework"

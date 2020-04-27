@@ -2,10 +2,10 @@ package store
 
 import (
 	"context"
+	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net"
 
-	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
 )
@@ -77,15 +77,15 @@ func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.No
 }
 
 func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
-	var en router.Node
+	var en nodes.Node
 	var err error
 
-	res := make(map[router.Node][]string)
+	res := make(map[nodes.Node][]string)
 	for _, kl := range in.KL {
 		if inn.kvr != nil {
 			en, err = inn.kvr.GetNode(kl.Node.ID)
 		} else {
-			en, err = router.NewExternalNode(kl.Node, nil)
+			en, err = nodes.NewExternalNode(kl.Node, nil)
 		}
 		if err != nil {
 			return nil, err

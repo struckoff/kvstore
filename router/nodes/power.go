@@ -1,4 +1,4 @@
-package router
+package nodes
 
 type Power struct {
 	p float64

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
 	"log"
@@ -19,7 +20,7 @@ func main() {
 }
 
 func run() error {
-	var conf router.Config
+	var conf config.Config
 	errCh := make(chan error)
 	// If config implies use of consul, consul agent name  will be  used as name.
 	// Otherwise, hostname will be used instead.
@@ -50,7 +51,7 @@ func run() error {
 			return
 		}
 	}(errCh)
-	go func(errCh chan error, h *router.Host, conf *router.Config) {
+	go func(errCh chan error, h *router.Host, conf *config.Config) {
 		if err := RunRPCServer(h, conf); err != nil {
 			errCh <- err
 			return
@@ -60,7 +61,7 @@ func run() error {
 	return <-errCh
 }
 
-func RunRPCServer(h rpcapi.RPCBalancerServer, conf *router.Config) error {
+func RunRPCServer(h rpcapi.RPCBalancerServer, conf *config.Config) error {
 	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
 	if err != nil {
 		return err

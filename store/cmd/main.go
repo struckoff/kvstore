@@ -5,6 +5,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/struckoff/SFCFramework/curve"
 	"github.com/struckoff/kvstore/router"
+	"github.com/struckoff/kvstore/router/balanceradapter"
+	"github.com/struckoff/kvstore/router/config"
+	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
@@ -38,26 +41,40 @@ func run() error {
 	}
 	defer db.Close()
 
+	// create balancer
 	switch conf.Mode {
 	case store.StandaloneMode, store.ConsulMode:
-		bal, err := router.NewSFCBalancer(conf.Balancer)
-		if err != nil {
-			return err
-		}
+		var bal balanceradapter.Balancer
 		var hr nodehasher.Hasher
+		switch conf.Balancer.Mode {
+		case config.ConsistentMode:
+			bal = balanceradapter.NewConsistentBalancer(conf.Balancer.Ring)
+		case config.SFCMode:
+			bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
+			if err != nil {
+				return err
+			}
+		}
+
+		// create node hasher
 		switch conf.Balancer.NodeHash {
-		case router.GeoSfc:
-			sfc, err := curve.NewCurve(conf.Balancer.Curve.CurveType, 2, bal.SFC().Bits())
+		case config.GeoSfc:
+			sb := bal.(*balanceradapter.SFC)
+			sfc, err := curve.NewCurve(conf.Balancer.SFC.Curve.CurveType, 2, sb.SFC().Bits())
 			if err != nil {
 				return errors.Wrap(err, "failed to create curve")
 			}
 			hr = nodehasher.NewGeoSfc(sfc)
-		case router.XXHash:
+		case config.XXHash:
 			hr = nodehasher.NewXXHash()
 		default:
 			return errors.New("invalid node hasher")
 		}
-		kvr, err := router.NewRouter(bal, hr)
+		ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
+		if err != nil {
+			return err
+		}
+		kvr, err := router.NewRouter(bal, hr, ndf)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
@@ -79,6 +96,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
+	default:
+		return errors.New("wrong node node")
 	}
 
 	go func(errCh chan error, conf *store.Config) {
