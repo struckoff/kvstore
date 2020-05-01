@@ -117,7 +117,7 @@ func NewHost(conf *config.Config) (*Host, error) {
 
 	switch conf.Balancer.Mode {
 	case config.ConsistentMode:
-		bal = balanceradapter.NewConsistentBalancer(conf.Balancer.Ring)
+		bal = balanceradapter.NewConsistentBalancer()
 	case config.SFCMode:
 		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
 		if err != nil {

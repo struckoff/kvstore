@@ -11,9 +11,11 @@ import (
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
+	"log"
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if err := run(); err != nil {
 		panic(err)
 	}
@@ -48,7 +50,7 @@ func run() error {
 		var hr nodehasher.Hasher
 		switch conf.Balancer.Mode {
 		case config.ConsistentMode:
-			bal = balanceradapter.NewConsistentBalancer(conf.Balancer.Ring)
+			bal = balanceradapter.NewConsistentBalancer()
 		case config.SFCMode:
 			bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
 			if err != nil {
@@ -78,7 +80,7 @@ func run() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
-		//Initialize local node1
+		//Initialize local node
 		inn, err = store.NewLocalNode(&conf, db, kvr)
 		if err != nil {
 			return err

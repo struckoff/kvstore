@@ -2,24 +2,33 @@ package router
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/struckoff/kvstore/router/balanceradapter"
+	"github.com/stretchr/testify/mock"
+	balancer "github.com/struckoff/SFCFramework"
+	balancermocs "github.com/struckoff/SFCFramework/mocks"
+	balanceradaptermock "github.com/struckoff/kvstore/router/balanceradapter/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
+	nodesmock "github.com/struckoff/kvstore/router/nodes/mocks"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	"sort"
+	"strings"
+
+	//"github.com/struckoff/kvstore/router/nodes/mocks"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestRouter_HTTPHandler(t *testing.T) {
+func TestRouter_HTTPHandler_GET(t *testing.T) {
 	type args struct {
 		method string
 		path   string
 		body   io.Reader
 	}
 	type fields struct {
-		bal balanceradapter.Balancer
+		//bal balanceradapter.Balancer
+		nodes map[string][]string
 	}
 	tests := []struct {
 		name   string
@@ -35,15 +44,15 @@ func TestRouter_HTTPHandler(t *testing.T) {
 				body:   nil,
 			},
 			fields: fields{
-				bal: mockBalancer{nodes: []nodes.Node{
-					nodes.mockNode{id: "mnode-0"},
-					nodes.mockNode{id: "mnode-1"},
-					nodes.mockNode{id: "mnode-2"},
-				}},
+				nodes: map[string][]string{
+					"test-node-0": nil,
+					"test-node-1": nil,
+					"test-node-2": nil,
+				},
 			},
 			want: &httptest.ResponseRecorder{
 				Code: 200,
-				Body: bytes.NewBuffer([]byte("[{\"ID\":\"mnode-0\"},{\"ID\":\"mnode-1\"},{\"ID\":\"mnode-2\"}]\n")),
+				Body: bytes.NewBuffer([]byte("[{\"ID\":\"test-node-0\"},{\"ID\":\"test-node-1\"},{\"ID\":\"test-node-2\"}]\n")),
 			},
 		},
 		{
@@ -54,67 +63,40 @@ func TestRouter_HTTPHandler(t *testing.T) {
 				body:   nil,
 			},
 			fields: fields{
-				bal: mockBalancer{
-					nodes: []nodes.Node{
-						nodes.mockNode{
-							id: "mnode-0",
-							kv: map[string][]byte{
-								"mnode-0-key-0": nil,
-								"mnode-0-key-1": nil,
-								"mnode-0-key-2": nil,
-							}},
-						nodes.mockNode{
-							id: "mnode-1",
-							kv: map[string][]byte{
-								"mnode-1-key-0": nil,
-								"mnode-1-key-1": nil,
-								"mnode-1-key-2": nil,
-							}},
-					},
-					kv: nil,
+				nodes: map[string][]string{
+					"test-node-0": {"test-node-0-key-0", "test-node-0-key-1", "test-node-0-key-2"},
+					"test-node-1": {"test-node-1-key-0", "test-node-1-key-1", "test-node-1-key-2"},
 				},
 			},
 			want: &httptest.ResponseRecorder{
 				Code: 200,
-				Body: bytes.NewBuffer([]byte("{\"mnode-0\":[\"mnode-0-key-0\",\"mnode-0-key-1\",\"mnode-0-key-2\"],\"mnode-1\":[\"mnode-1-key-0\",\"mnode-1-key-1\",\"mnode-1-key-2\"]}")),
+				Body: bytes.NewBuffer([]byte("{\"test-node-0\":[\"test-node-0-key-0\",\"test-node-0-key-1\",\"test-node-0-key-2\"],\"test-node-1\":[\"test-node-1-key-0\",\"test-node-1-key-1\",\"test-node-1-key-2\"]}")),
 			},
 		},
 		{
 			name: "GET /get",
 			args: args{
 				method: "GET",
-				path:   "/get/mkey-1",
+				path:   "/get/test-node-1-key-1",
 				body:   nil,
 			},
 			fields: fields{
-				bal: mockBalancer{
-					kv: map[string][]byte{
-						"mkey-0": []byte("mkey-0-val"),
-						"mkey-1": []byte("mkey-1-val"),
-						"mkey-2": []byte("mkey-2-val"),
-					},
+				nodes: map[string][]string{
+					"test-node-0": {"test-node-0-key-0", "test-node-0-key-1", "test-node-0-key-2"},
+					"test-node-1": {"test-node-1-key-0", "test-node-1-key-1", "test-node-1-key-2"},
 				},
 			},
 			want: &httptest.ResponseRecorder{
 				Code: 200,
-				Body: bytes.NewBuffer([]byte("mkey-1-val")),
+				Body: bytes.NewBuffer([]byte("test-node-1")),
 			},
 		},
 		{
-			name: "POST /put",
+			name: "POST /put/test-key-3",
 			args: args{
 				method: "POST",
-				path:   "/put/mkey-3",
-				body:   bytes.NewBuffer([]byte("mkey-3-val")),
-			},
-			fields: fields{
-				bal: mockBalancer{
-					kv: map[string][]byte{
-						"mkey-0": []byte("mkey-0-val"),
-						"mkey-1": []byte("mkey-1-val"),
-						"mkey-2": []byte("mkey-2-val"),
-					},
-				},
+				body:   bytes.NewBuffer([]byte("test-key-3-val")),
+				path:   "/put/test-key-3",
 			},
 			want: &httptest.ResponseRecorder{
 				Code: 200,
@@ -124,8 +106,31 @@ func TestRouter_HTTPHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var ns []nodes.Node
+			for name, keys := range tt.fields.nodes {
+				mn := &nodesmock.Node{}
+				mn.On("ID").Return(name)
+				mn.On("Meta").Return(&rpcapi.NodeMeta{ID: name})
+				mn.On("Explore").Return(keys, nil)
+				mn.On("Store", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil)
+				ns = append(ns, mn)
+			}
+			sort.Slice(ns, func(i, j int) bool { return strings.Compare(ns[i].ID(), ns[j].ID()) < 1 })
+
+			mn := &nodesmock.Node{}
+			mn.On("Store", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil)
+			mn.On("Receive", "test-node-1-key-1").Return([]byte("test-node-1"), nil)
+
+			mbal := &balanceradaptermock.Balancer{}
+			mbal.On("LocateData", mock.AnythingOfType("*mocks.DataItem")).Return(mn, nil)
+			mbal.On("Nodes").Return(ns, nil)
 			h := &Router{
-				bal: tt.fields.bal,
+				bal: mbal,
+				ndf: func(s string) (balancer.DataItem, error) {
+					di := &balancermocs.DataItem{}
+					di.On("ID").Return(s)
+					return di, nil
+				},
 			}
 			handler := h.HTTPHandler()
 
@@ -140,40 +145,4 @@ func TestRouter_HTTPHandler(t *testing.T) {
 			assert.Equal(t, tt.want.Body, rr.Body)
 		})
 	}
-}
-
-type mockBalancer struct {
-	nodes []nodes.Node
-	kv    map[string][]byte
-}
-
-func (bal mockBalancer) AddNode(n nodes.Node) error {
-	bal.nodes = append(bal.nodes, n)
-	return nil
-}
-
-func (m mockBalancer) RemoveNode(id string) error {
-	panic("implement me")
-}
-
-func (m mockBalancer) SetNodes(ns []nodes.Node) error {
-	m.nodes = ns
-	return nil
-}
-
-func (m mockBalancer) LocateData(key string) (nodes.Node, error) {
-	return nodes.mockNode{id: key, kv: m.kv}, nil
-}
-
-func (m mockBalancer) Nodes() ([]nodes.Node, error) {
-	return m.nodes, nil
-}
-
-func (m mockBalancer) GetNode(id string) (nodes.Node, error) {
-	for _, n := range m.nodes {
-		if n.ID() == id {
-			return n, nil
-		}
-	}
-	return nil, errors.New("Node not found")
 }

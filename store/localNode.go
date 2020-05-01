@@ -236,12 +236,19 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, er
 		kvr:        kvr,
 		geo:        conf.Geo,
 	}
-	if kvr != nil {
-		h, err := kvr.Hasher().Sum(ln.meta())
+	if ln.kvr != nil {
+		h, err := ln.kvr.Hasher().Sum(ln.meta())
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to calculate hash sum")
 		}
 		ln.h = h
+	}
+	if conf.Mode == ConsulMode {
+		consul, err := consulapi.NewClient(&conf.Consul.Config)
+		if err != nil {
+			return nil, err
+		}
+		ln.consul = consul
 	}
 	return ln, nil
 }

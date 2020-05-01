@@ -2,9 +2,13 @@
   "Address": "0.0.0.0:9190",
   "RPCAddress": "127.0.0.1:9290",
   "Balancer":{
-    "Dimensions":2,
-    "Size":64,
-    "Curve": "morton",
+    "Mode": "SFC",
+    "DataMode": "geo",
+    "SFC": {
+      "Dimensions":2,
+      "Size":64,
+      "Curve": "morton"
+    },
     "NodeHash": "geosfc"
   }
 }
