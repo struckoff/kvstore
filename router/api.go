@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
+	"unsafe"
 )
 
 func (h *Router) HTTPHandler() *httprouter.Router {
@@ -17,7 +19,7 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	//h.POST("/node", h.HTTPRegister)
 	r.GET("/nodes", h.Nodes)
 	r.POST("/put/:key", h.Store)
-	r.GET("/get/:key", h.Receive)
+	r.GET("/get/*key", h.Receive)
 	r.GET("/list", h.Explore)
 	return r
 }
@@ -54,23 +56,70 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
-	key := ps.ByName("key")
-	n, err := h.LocateKey(key)
+	k := ps.ByName("key")
+	keys := strings.Split(k[1:], "/")
+	nmk, err := h.keysOnNodes(keys)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var body []byte
-	body, err = n.Receive(key)
-	if err != nil {
+	kvsCh := make(chan *rpcapi.KeyValues, len(nmk))
+	for n, keys := range nmk {
+		func(n nodes.Node, keys []string, kvsCh chan<- *rpcapi.KeyValues) {
+			var kvs *rpcapi.KeyValues
+			defer func() { kvsCh <- kvs }()
+			kvs, err = n.Receive(keys)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+		}(n, keys, kvsCh)
+	}
+
+	var resp rpcapi.KeyValues
+	for iter := 0; iter < len(nmk); iter++ {
+		kvs := <-kvsCh
+		if kvs == nil {
+			continue
+		}
+		resp.KVs = append(resp.KVs, kvs.KVs...)
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := w.Write(body); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	//var body []byte
+	//body, err = n.Receive(key)
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+	//if body == nil {
+	//	http.Error(w, "not found", http.StatusNotFound)
+	//}
+	//if _, err := w.Write(body); err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+}
+
+func byteSlice2String(bs []byte) string {
+	return *(*string)(unsafe.Pointer(&bs))
+}
+
+func (h *Router) keysOnNodes(keys []string) (map[nodes.Node][]string, error) {
+	nmk := make(map[nodes.Node][]string)
+	for iter := range keys {
+		n, err := h.LocateKey(keys[iter])
+		if err != nil {
+			return nil, err
+		}
+		nmk[n] = append(nmk[n], keys[iter])
 	}
+	return nmk, nil
 }
 
 //Explore returns a list of keys on nodes

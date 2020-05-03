@@ -10,7 +10,7 @@ message KeyValue {
 message Empty {}
 
 message KeyReq {
-	string Key = 1;
+	repeated string Keys = 1;
 }
 
 message MoveReq{
@@ -57,7 +57,7 @@ message KeyValues {
 service RPCNode {
 	rpc RPCStore (KeyValue) returns (Empty);
 	rpc RPCStorePairs (KeyValues) returns (Empty);
-	rpc RPCReceive (KeyReq) returns (KeyValue);
+	rpc RPCReceive (KeyReq) returns (KeyValues);
 	rpc RPCRemove (KeyReq) returns (Empty);
 	rpc RPCExplore (Empty) returns (ExploreRes);
 	rpc RPCMeta (Empty) returns (NodeMeta);

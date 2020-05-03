@@ -69,14 +69,20 @@ func (n *RemoteNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 }
 
 //Receive value for a given key from the remote node
-func (n *RemoteNode) Receive(key string) ([]byte, error) {
-	log.Printf("Receive key(%s) from %s", key, n.id)
-	req := rpcapi.KeyReq{Key: key}
+func (n *RemoteNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
+	log.Printf("Receive keys(%v) from %s", keys, n.id)
+	req := rpcapi.KeyReq{Keys: keys}
 	res, err := n.rpcclient.RPCReceive(context.TODO(), &req)
-	if err != nil {
-		return nil, err
-	}
-	return res.Value, nil
+	return res, err
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//b, err := json.Marshal(res)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "failed to marshal response from external node")
+	//}
+	//return b, nil
 }
 
 // Explore returns the list of keys on remote node
@@ -91,9 +97,9 @@ func (n *RemoteNode) Explore() ([]string, error) {
 }
 
 // Remove value for a given key
-func (n *RemoteNode) Remove(key string) error {
+func (n *RemoteNode) Remove(key []string) error {
 	log.Printf("Remove key(%s) from %s", key, n.id)
-	req := rpcapi.KeyReq{Key: key}
+	req := rpcapi.KeyReq{Keys: key}
 	_, err := n.rpcclient.RPCRemove(context.TODO(), &req)
 	return err
 }

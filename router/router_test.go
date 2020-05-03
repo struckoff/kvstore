@@ -8,7 +8,6 @@ import (
 	balanceradaptermock "github.com/struckoff/kvstore/router/balanceradapter/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
 	nodesmock "github.com/struckoff/kvstore/router/nodes/mocks"
-	"testing"
 )
 
 func TestRouter_AddNode(t *testing.T) {

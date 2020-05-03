@@ -1,22 +1,12 @@
 package router
 
 import (
-	"bytes"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	balancer "github.com/struckoff/SFCFramework"
-	balancermocs "github.com/struckoff/SFCFramework/mocks"
-	balanceradaptermock "github.com/struckoff/kvstore/router/balanceradapter/mocks"
-	"github.com/struckoff/kvstore/router/nodes"
-	nodesmock "github.com/struckoff/kvstore/router/nodes/mocks"
-	"github.com/struckoff/kvstore/router/rpcapi"
-	"sort"
-	"strings"
-
-	//"github.com/struckoff/kvstore/router/nodes/mocks"
+	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
+	"io/ioutil"
+	"log"
+	"math/rand"
+
 	"testing"
 )
 
@@ -144,5 +134,40 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 			assert.Equal(t, tt.want.Code, rr.Code)
 			assert.Equal(t, tt.want.Body, rr.Body)
 		})
+	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func generateData(n int) [][]byte {
+	res := make([][]byte, n)
+	for iter := range res {
+		b := make([]rune, 256)
+		for i := range b {
+			b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		}
+		res[iter] = []byte(fmt.Sprintf("%d", rand.Int()))
+	}
+
+	return res
+}
+
+func Benchmark_byteSlice2String(b *testing.B) {
+	log.SetOutput(ioutil.Discard)
+	data := generateData(b.N)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		log.Print(byteSlice2String(data[i]))
+	}
+}
+
+func Benchmark_byteSlice2String_normal(b *testing.B) {
+	log.SetOutput(ioutil.Discard)
+	data := generateData(b.N)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		log.Print(string(data[i]))
 	}
 }
