@@ -4,7 +4,7 @@ package rpcapi;
 
 message KeyValue {
 	string Key = 1;
-	bytes Value = 2;
+	string Value = 2;
 }
 
 message Empty {}

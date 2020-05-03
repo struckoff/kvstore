@@ -51,7 +51,7 @@ func (n *RemoteNode) Hash() uint64 {
 //Save value for a given key on the remote node
 func (n *RemoteNode) Store(key string, body []byte) error {
 	log.Printf("Store key(%s) on %s", key, n.id)
-	req := rpcapi.KeyValue{Key: key, Value: body}
+	req := rpcapi.KeyValue{Key: key, Value: string(body)}
 	if _, err := n.rpcclient.RPCStore(context.TODO(), &req); err != nil {
 		return err
 	}

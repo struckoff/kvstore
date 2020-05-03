@@ -90,20 +90,6 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	//var body []byte
-	//body, err = n.Receive(key)
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
-	//if body == nil {
-	//	http.Error(w, "not found", http.StatusNotFound)
-	//}
-	//if _, err := w.Write(body); err != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
 }
 
 func byteSlice2String(bs []byte) string {

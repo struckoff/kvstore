@@ -5,15 +5,15 @@ import (
 	"github.com/stretchr/testify/mock"
 	balancer "github.com/struckoff/SFCFramework"
 	balancermocs "github.com/struckoff/SFCFramework/mocks"
-	balanceradaptermock "github.com/struckoff/kvstore/router/balanceradapter/mocks"
+	"github.com/struckoff/kvstore/router/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
-	nodesmock "github.com/struckoff/kvstore/router/nodes/mocks"
+	"testing"
 )
 
 func TestRouter_AddNode(t *testing.T) {
-	mn := &nodesmock.Node{}
+	mn := &mocks.Node{}
 
-	mbal := &balanceradaptermock.Balancer{}
+	mbal := &mocks.Balancer{}
 	mbal.On("AddNode", mn).Return(nil)
 	h := &Router{
 		bal: mbal,
@@ -28,7 +28,7 @@ func TestRouter_AddNode(t *testing.T) {
 func TestRouter_RemoveNode(t *testing.T) {
 	name := "test-node"
 
-	mbal := &balanceradaptermock.Balancer{}
+	mbal := &mocks.Balancer{}
 	mbal.On("RemoveNode", name).Return(nil)
 	h := &Router{
 		bal: mbal,
@@ -44,10 +44,10 @@ func TestRouter_LocateKey(t *testing.T) {
 	key := "test-key"
 
 	name := "test-node"
-	mn := &nodesmock.Node{}
+	mn := &mocks.Node{}
 	mn.On("ID").Return(name)
 
-	mbal := &balanceradaptermock.Balancer{}
+	mbal := &mocks.Balancer{}
 	mbal.On("LocateData", mock.AnythingOfType("*mocks.DataItem")).Return(mn, nil)
 
 	h := &Router{
@@ -68,12 +68,12 @@ func TestRouter_LocateKey(t *testing.T) {
 
 func TestRouter_SetNodes(t *testing.T) {
 	ns := []nodes.Node{
-		&nodesmock.Node{},
-		&nodesmock.Node{},
-		&nodesmock.Node{},
+		&mocks.Node{},
+		&mocks.Node{},
+		&mocks.Node{},
 	}
 
-	mbal := &balanceradaptermock.Balancer{}
+	mbal := &mocks.Balancer{}
 	mbal.On("SetNodes", ns).Return(nil)
 
 	h := &Router{
@@ -93,10 +93,10 @@ func TestRouter_SetNodes(t *testing.T) {
 
 func TestRouter_GetNode(t *testing.T) {
 	name := "test-node"
-	mn := &nodesmock.Node{}
+	mn := &mocks.Node{}
 	mn.On("ID").Return(name)
 
-	mbal := &balanceradaptermock.Balancer{}
+	mbal := &mocks.Balancer{}
 	mbal.On("GetNode", name).Return(mn, nil)
 
 	h := &Router{

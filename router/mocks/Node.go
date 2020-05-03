@@ -125,22 +125,22 @@ func (_m *Node) Power() balancer.Power {
 	return r0
 }
 
-// Receive provides a mock function with given fields: key
-func (_m *Node) Receive(key string) ([]byte, error) {
-	ret := _m.Called(key)
+// Receive provides a mock function with given fields: _a0
+func (_m *Node) Receive(_a0 []string) (*rpcapi.KeyValues, error) {
+	ret := _m.Called(_a0)
 
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(string) []byte); ok {
-		r0 = rf(key)
+	var r0 *rpcapi.KeyValues
+	if rf, ok := ret.Get(0).(func([]string) *rpcapi.KeyValues); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
+			r0 = ret.Get(0).(*rpcapi.KeyValues)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(key)
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -148,13 +148,13 @@ func (_m *Node) Receive(key string) ([]byte, error) {
 	return r0, r1
 }
 
-// Remove provides a mock function with given fields: key
-func (_m *Node) Remove(key string) error {
-	ret := _m.Called(key)
+// Remove provides a mock function with given fields: _a0
+func (_m *Node) Remove(_a0 []string) error {
+	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(key)
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -162,13 +162,13 @@ func (_m *Node) Remove(key string) error {
 	return r0
 }
 
-// Store provides a mock function with given fields: key, body
-func (_m *Node) Store(key string, body []byte) error {
-	ret := _m.Called(key, body)
+// Store provides a mock function with given fields: _a0, _a1
+func (_m *Node) Store(_a0 string, _a1 []byte) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, []byte) error); ok {
-		r0 = rf(key, body)
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}

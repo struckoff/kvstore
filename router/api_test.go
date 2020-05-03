@@ -1,11 +1,23 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	balancer "github.com/struckoff/SFCFramework"
+	balancermocs "github.com/struckoff/SFCFramework/mocks"
+	"github.com/struckoff/kvstore/router/mocks"
+	"github.com/struckoff/kvstore/router/nodes"
+	"github.com/struckoff/kvstore/router/rpcapi"
 	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"strings"
 
 	"testing"
 )
@@ -78,7 +90,7 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 			},
 			want: &httptest.ResponseRecorder{
 				Code: 200,
-				Body: bytes.NewBuffer([]byte("test-node-1")),
+				Body: bytes.NewBuffer([]byte("{\"KVs\":[{\"Key\":\"test-node-1-key-1\",\"Value\":\"test-node-1\"}]}\n")),
 			},
 		},
 		{
@@ -98,7 +110,7 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var ns []nodes.Node
 			for name, keys := range tt.fields.nodes {
-				mn := &nodesmock.Node{}
+				mn := &mocks.Node{}
 				mn.On("ID").Return(name)
 				mn.On("Meta").Return(&rpcapi.NodeMeta{ID: name})
 				mn.On("Explore").Return(keys, nil)
@@ -107,11 +119,14 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 			}
 			sort.Slice(ns, func(i, j int) bool { return strings.Compare(ns[i].ID(), ns[j].ID()) < 1 })
 
-			mn := &nodesmock.Node{}
+			mn := &mocks.Node{}
 			mn.On("Store", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil)
-			mn.On("Receive", "test-node-1-key-1").Return([]byte("test-node-1"), nil)
+			kvs := &rpcapi.KeyValues{
+				KVs: []*rpcapi.KeyValue{{Key: "test-node-1-key-1", Value: "test-node-1"}},
+			}
+			mn.On("Receive", []string{"test-node-1-key-1"}).Return(kvs, nil)
 
-			mbal := &balanceradaptermock.Balancer{}
+			mbal := &mocks.Balancer{}
 			mbal.On("LocateData", mock.AnythingOfType("*mocks.DataItem")).Return(mn, nil)
 			mbal.On("Nodes").Return(ns, nil)
 			h := &Router{
