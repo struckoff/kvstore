@@ -27,8 +27,7 @@ var (
 	}
 )
 
-/**
-***** ENVIRONMENT OPTIONS ******
+/******* ENVIRONMENT OPTIONS ******
 KVSTORE_NAME
 KVSTORE_ADDRESS
 KVSTORE_RPC_ADDRESS
@@ -197,9 +196,6 @@ func (conf *Config) Prepare() error {
 //  sfc.size 	   		   -> Balancer.SFC.Size
 //  sfc.dimensions 		   -> Balancer.SFC.Dimensions
 //  sfc.curve 	   		   -> Balancer.SFC.Curve
-//  ring.load 	   		   -> Balancer.Ring.Load
-//  ring.PartitionCount    -> Balancer.Ring.PartitionCount
-//  ring.replicationFactor -> Balancer.Ring.ReplicationFactor
 func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	logform := "%s: found in consul with value \"%s\""
 	if conf.Name != nil {

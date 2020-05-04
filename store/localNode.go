@@ -36,6 +36,7 @@ type LocalNode struct {
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {
 	h := inn.kvr.HTTPHandler()
+	log.Printf("HTTP server listening on %s", addr)
 	if err := http.ListenAndServe(addr, h); err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 			return err
 		}
 		for iter := range pairs {
-			if err := bc.Put([]byte(pairs[iter].Key), pairs[iter].Value); err != nil {
+			if err := bc.Put([]byte(pairs[iter].Key), []byte(pairs[iter].Value)); err != nil {
 				return errors.Wrap(err, "failed to store pair")
 			}
 		}
@@ -118,27 +119,40 @@ func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 }
 
 // Return value for a given key from local storage
-func (inn *LocalNode) Receive(key string) ([]byte, error) {
-	var body []byte
+func (inn *LocalNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
+	kvs := &rpcapi.KeyValues{
+		KVs: make([]*rpcapi.KeyValue, len(keys)),
+	}
 	err := inn.db.View(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
 			return errors.New("unable to receive value, bucket not found")
 		}
-		body = bc.Get([]byte(key))
+		for iter := range keys {
+			val := bc.Get([]byte(keys[iter]))
+			kvs.KVs[iter] = &rpcapi.KeyValue{
+				Key:   keys[iter],
+				Value: string(val),
+			}
+		}
 		return nil
 	})
-	return body, err
+	return kvs, err
 }
 
 // Remove value for a given key
-func (inn *LocalNode) Remove(key string) error {
+func (inn *LocalNode) Remove(keys []string) error {
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
 			return nil
 		}
-		return bc.Delete([]byte(key))
+		for iter := range keys {
+			if err := bc.Delete([]byte(keys[iter])); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to remove key")
@@ -164,7 +178,7 @@ func (inn *LocalNode) Move(nk map[nodes.Node][]string) error {
 				pairs := make([]*rpcapi.KeyValue, len(keys))
 				for iter := range keys {
 					body := bc.Get([]byte(keys[iter]))
-					pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: body}
+					pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: string(body)}
 				}
 				if err := en.StorePairs(pairs); err != nil {
 					return errors.Wrap(err, "failed to move keys and values to another node")

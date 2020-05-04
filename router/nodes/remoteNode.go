@@ -114,6 +114,7 @@ func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
 		RPCAddress: n.rpcaddress,
 		Power:      n.p.Get(),
 		Capacity:   n.p.Get(),
+		Geo:        n.geo,
 	}
 }
 
@@ -146,15 +147,8 @@ func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNo
 			return nil, err
 		}
 	}
-	return &RemoteNode{
-		id:         meta.ID,
-		address:    meta.Address,
-		rpcaddress: meta.RPCAddress,
-		p:          NewPower(meta.Power),
-		c:          NewCapacity(meta.Capacity),
-		rpcclient:  c,
-		h:          hashsum,
-	}, nil
+	en := newExternalNode(meta, c, hashsum)
+	return en, nil
 }
 
 // NewExternalNodeByAddr - create a new instance of an external node.
@@ -172,6 +166,11 @@ func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNod
 	if err != nil {
 		return nil, err
 	}
+	en := newExternalNode(meta, c, hashsum)
+	return en, nil
+}
+
+func newExternalNode(meta *rpcapi.NodeMeta, c rpcapi.RPCNodeClient, h uint64) *RemoteNode {
 	return &RemoteNode{
 		id:         meta.ID,
 		address:    meta.Address,
@@ -179,8 +178,9 @@ func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNod
 		p:          NewPower(meta.Power),
 		c:          NewCapacity(meta.Capacity),
 		rpcclient:  c,
-		h:          hashsum,
-	}, nil
+		h:          h,
+		geo:        meta.Geo,
+	}
 }
 
 func enClient(addr string) (rpcapi.RPCNodeClient, error) {

@@ -86,7 +86,7 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 		resp.KVs = append(resp.KVs, kvs.KVs...)
 	}
 
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
+	if err := json.NewEncoder(w).Encode(resp.KVs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

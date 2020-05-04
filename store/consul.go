@@ -69,9 +69,6 @@ func (inn *LocalNode) consulAnnounce(conf *Config) (err error) {
 		Address:   addrParts[0],
 		Check:     &acc,
 		Namespace: conf.Consul.Namespace,
-		Meta: map[string]string{
-			"power": checkID,
-		},
 	}
 
 	if err := inn.consul.Agent().ServiceRegister(service); err != nil {
@@ -143,7 +140,7 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- nodes.Nod
 	}
 	en, err := nodes.NewExternalNodeByAddr(addr, inn.kvr.Hasher())
 	if err != nil {
-		log.Printf("unable to connect to node %s(%s)", id, addr)
+		log.Printf("unable to connect to node %s(%s): %s", id, addr, err.Error())
 		nCh <- nil
 		return
 	}

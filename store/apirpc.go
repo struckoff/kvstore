@@ -22,6 +22,7 @@ func (inn *LocalNode) RunRPCServer(conf *Config) error {
 	inn.rpcserver = grpc.NewServer()
 	rpcapi.RegisterRPCNodeServer(inn.rpcserver, inn)
 
+	log.Printf("RPC server listening on %s", inbound.Addr().String())
 	if err := inn.rpcserver.Serve(inbound); err != nil {
 		return err
 	}
@@ -29,7 +30,7 @@ func (inn *LocalNode) RunRPCServer(conf *Config) error {
 }
 
 func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (*rpcapi.Empty, error) {
-	if err := inn.Store(in.Key, in.Value); err != nil {
+	if err := inn.Store(in.Key, []byte(in.Value)); err != nil {
 		return nil, err
 	}
 	return &rpcapi.Empty{}, nil
@@ -43,16 +44,12 @@ func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (
 	return &rpcapi.Empty{}, nil
 }
 
-func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValue, error) {
-	b, err := inn.Receive(in.Key)
-	if err != nil {
-		return nil, err
-	}
-	return &rpcapi.KeyValue{Key: in.Key, Value: b}, nil
+func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValues, error) {
+	return inn.Receive(in.Keys)
 }
 
 func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.Empty, error) {
-	if err := inn.Remove(in.Key); err != nil {
+	if err := inn.Remove(in.Keys); err != nil {
 		return nil, err
 	}
 	return &rpcapi.Empty{}, nil
@@ -66,13 +63,7 @@ func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi
 	return &rpcapi.ExploreRes{Keys: keys}, nil
 }
 func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
-	meta := &rpcapi.NodeMeta{
-		ID:         inn.ID(),
-		Address:    inn.HTTPAddress(),
-		RPCAddress: inn.RPCAddress(),
-		Power:      inn.Power().Get(),
-		Capacity:   inn.Capacity().Get(),
-	}
+	meta := inn.meta()
 	return meta, nil
 }
 

@@ -12,6 +12,9 @@ type SyncMap struct {
 
 func (sm *SyncMap) Put(key string, value []string) {
 	sm.mu.Lock()
+	if value == nil {
+		value = make([]string, 0)
+	}
 	sm.s[key] = value
 	sm.mu.Unlock()
 }
