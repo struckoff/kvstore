@@ -119,7 +119,7 @@ func NewHost(conf *config.Config) (*Host, error) {
 	case config.ConsistentMode:
 		bal = balanceradapter.NewConsistentBalancer()
 	case config.SFCMode:
-		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
+		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer)
 		if err != nil {
 			return nil, err
 		}

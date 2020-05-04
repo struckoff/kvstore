@@ -14,12 +14,21 @@ type SFC struct {
 	bal *balancer.Balancer
 }
 
-func NewSFCBalancer(conf *config.SFCConfig) (*SFC, error) {
+func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
+	var tf balancer.TransformFunc
+	switch conf.DataMode {
+	case config.GeoData:
+		tf = transform.SpaceTransform
+	case config.KVData:
+		tf = transform.KVTransform
+	default:
+		return nil, errors.New("wrong data mode")
+	}
 	bal, err := balancer.NewBalancer(
-		conf.Curve.CurveType,
-		conf.Dimensions,
-		conf.Size,
-		transform.KVTransform,
+		conf.SFC.Curve.CurveType,
+		conf.SFC.Dimensions,
+		conf.SFC.Size,
+		tf,
 		optimizer.RangeOptimizer,
 		nil)
 	if err != nil {

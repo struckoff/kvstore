@@ -52,7 +52,7 @@ func run() error {
 		case config.ConsistentMode:
 			bal = balanceradapter.NewConsistentBalancer()
 		case config.SFCMode:
-			bal, err = balanceradapter.NewSFCBalancer(conf.Balancer.SFC)
+			bal, err = balanceradapter.NewSFCBalancer(conf.Balancer)
 			if err != nil {
 				return err
 			}
