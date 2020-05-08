@@ -11,15 +11,62 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"github.com/struckoff/kvstore/router/ttl"
 )
 
+func NewHost(conf *config.Config) (*Host, error) {
+	var err error
+	var bal balanceradapter.Balancer
+	var hr nodehasher.Hasher
+
+	switch conf.Balancer.Mode {
+	case config.ConsistentMode:
+		bal = balanceradapter.NewConsistentBalancer()
+	case config.SFCMode:
+		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	switch conf.Balancer.NodeHash {
+	case config.GeoSfc:
+		sb := bal.(*balanceradapter.SFC)
+		sfc, err := curve.NewCurve(conf.Balancer.SFC.Curve.CurveType, 2, sb.SFC().Bits())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create curve")
+		}
+		hr = nodehasher.NewGeoSfc(sfc)
+	case config.XXHash:
+		hr = nodehasher.NewXXHash()
+	default:
+		return nil, errors.New("invalid node hasher")
+	}
+
+	ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
+	if err != nil {
+		return nil, err
+	}
+	kvr, err := NewRouter(bal, hr, ndf)
+	if err != nil {
+		return nil, err
+	}
+	h := &Host{
+		kvr:         kvr,
+		checks:      ttl.NewChecksMap(),
+		httplatency: conf.Balancer.Latency.Duration,
+	}
+	return h, nil
+}
+
 type Host struct {
-	kvr    *Router
-	checks *ttl.ChecksMap
+	kvr         *Router
+	checks      *ttl.ChecksMap
+	httplatency time.Duration
 }
 
 func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
@@ -53,7 +100,8 @@ func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty
 func (h *Host) RunHTTPServer(addr string) error {
 	r := h.kvr.HTTPHandler()
 	log.Printf("Run server [%s]", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	l := LatencyMiddleware(r, h.httplatency)
+	if err := http.ListenAndServe(addr, l); err != nil {
 		return err
 	}
 	return nil
@@ -108,48 +156,4 @@ func (h *Host) redistributeKeys() error {
 	}
 	wg.Wait()
 	return nil
-}
-
-func NewHost(conf *config.Config) (*Host, error) {
-	var err error
-	var bal balanceradapter.Balancer
-	var hr nodehasher.Hasher
-
-	switch conf.Balancer.Mode {
-	case config.ConsistentMode:
-		bal = balanceradapter.NewConsistentBalancer()
-	case config.SFCMode:
-		bal, err = balanceradapter.NewSFCBalancer(conf.Balancer)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	switch conf.Balancer.NodeHash {
-	case config.GeoSfc:
-		sb := bal.(*balanceradapter.SFC)
-		sfc, err := curve.NewCurve(conf.Balancer.SFC.Curve.CurveType, 2, sb.SFC().Bits())
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create curve")
-		}
-		hr = nodehasher.NewGeoSfc(sfc)
-	case config.XXHash:
-		hr = nodehasher.NewXXHash()
-	default:
-		return nil, errors.New("invalid node hasher")
-	}
-
-	ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
-	if err != nil {
-		return nil, err
-	}
-	kvr, err := NewRouter(bal, hr, ndf)
-	if err != nil {
-		return nil, err
-	}
-	h := &Host{
-		kvr:    kvr,
-		checks: ttl.NewChecksMap(),
-	}
-	return h, nil
 }

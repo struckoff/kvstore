@@ -11,11 +11,13 @@ import (
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
+	"io/ioutil"
 	"log"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetOutput(ioutil.Discard)
 	if err := run(); err != nil {
 		panic(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net"
+	"time"
 
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
@@ -30,6 +31,7 @@ func (inn *LocalNode) RunRPCServer(conf *Config) error {
 }
 
 func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (*rpcapi.Empty, error) {
+	time.Sleep(inn.rpclatency)
 	if err := inn.Store(in.Key, []byte(in.Value)); err != nil {
 		return nil, err
 	}
@@ -38,6 +40,7 @@ func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (*rpcap
 
 func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (*rpcapi.Empty, error) {
 	log.Println("Receive keys")
+	time.Sleep(inn.rpclatency)
 	if err := inn.StorePairs(in.KVs); err != nil {
 		return nil, err
 	}
@@ -45,10 +48,12 @@ func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (
 }
 
 func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValues, error) {
+	time.Sleep(inn.rpclatency)
 	return inn.Receive(in.Keys)
 }
 
 func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.Empty, error) {
+	time.Sleep(inn.rpclatency)
 	if err := inn.Remove(in.Keys); err != nil {
 		return nil, err
 	}
@@ -56,6 +61,7 @@ func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi
 }
 
 func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi.ExploreRes, error) {
+	time.Sleep(inn.rpclatency)
 	keys, err := inn.Explore()
 	if err != nil {
 		return nil, err
@@ -63,11 +69,14 @@ func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi
 	return &rpcapi.ExploreRes{Keys: keys}, nil
 }
 func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
+	time.Sleep(inn.rpclatency)
 	meta := inn.meta()
 	return meta, nil
 }
 
 func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
+	time.Sleep(inn.rpclatency)
+
 	var en nodes.Node
 	var err error
 

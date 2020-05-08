@@ -6,14 +6,14 @@
   "Power": 1,
   "Capacity": 1,
   "Balancer":{
-    "Mode": "SFC",
+    "Mode": "consistent",
     "DataMode": "geo",
     "SFC": {
       "Dimensions":2,
       "Size":64,
       "Curve": "morton"
     },
-    "NodeHash": "geosfc"
+    "NodeHash": "xxhash"
   },
   "Health": {
     "CheckInterval": "10s",

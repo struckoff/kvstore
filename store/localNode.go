@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
@@ -17,27 +18,61 @@ import (
 
 var mainBucket = []byte("pairs")
 
+// Return new instance LocalNode.
+func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, error) {
+	ln := &LocalNode{
+		id:          *conf.Name,
+		address:     conf.Address,
+		rpcaddress:  conf.RPCAddress,
+		p:           nodes.NewPower(conf.Power),
+		c:           nodes.NewCapacity(conf.Capacity),
+		db:          db,
+		kvr:         kvr,
+		geo:         conf.Geo,
+		rpclatency:  conf.Latency.Duration,
+		httplatency: conf.Balancer.Latency.Duration,
+	}
+	if ln.kvr != nil {
+		h, err := ln.kvr.Hasher().Sum(ln.meta())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to calculate hash sum")
+		}
+		ln.h = h
+	}
+	if conf.Mode == ConsulMode {
+		consul, err := consulapi.NewClient(&conf.Consul.Config)
+		if err != nil {
+			return nil, err
+		}
+		ln.consul = consul
+	}
+	return ln, nil
+}
+
 // LocalNode represents local node
 type LocalNode struct {
-	mu         sync.RWMutex
-	id         string
-	address    string
-	rpcaddress string
-	rpcserver  *grpc.Server
-	p          nodes.Power
-	c          nodes.Capacity
-	db         *bolt.DB
-	kvr        *router.Router
-	consul     *consulapi.Client
-	kvrAgent   rpcapi.RPCBalancerClient
-	geo        *rpcapi.GeoData
-	h          uint64
+	mu          sync.RWMutex
+	id          string
+	address     string
+	rpcaddress  string
+	rpcserver   *grpc.Server
+	p           nodes.Power
+	c           nodes.Capacity
+	db          *bolt.DB
+	kvr         *router.Router
+	consul      *consulapi.Client
+	kvrAgent    rpcapi.RPCBalancerClient
+	geo         *rpcapi.GeoData
+	h           uint64
+	rpclatency  time.Duration
+	httplatency time.Duration
 }
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {
 	h := inn.kvr.HTTPHandler()
+	l := router.LatencyMiddleware(h, inn.httplatency)
 	log.Printf("HTTP server listening on %s", addr)
-	if err := http.ListenAndServe(addr, h); err != nil {
+	if err := http.ListenAndServe(addr, l); err != nil {
 		return err
 	}
 	return nil
@@ -236,35 +271,6 @@ func (inn *LocalNode) meta() *rpcapi.NodeMeta {
 		Capacity:   inn.Capacity().Get(),
 		Geo:        inn.geo,
 	}
-}
-
-// Return new instance LocalNode.
-func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, error) {
-	ln := &LocalNode{
-		id:         *conf.Name,
-		address:    conf.Address,
-		rpcaddress: conf.RPCAddress,
-		p:          nodes.NewPower(conf.Power),
-		c:          nodes.NewCapacity(conf.Capacity),
-		db:         db,
-		kvr:        kvr,
-		geo:        conf.Geo,
-	}
-	if ln.kvr != nil {
-		h, err := ln.kvr.Hasher().Sum(ln.meta())
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to calculate hash sum")
-		}
-		ln.h = h
-	}
-	if conf.Mode == ConsulMode {
-		consul, err := consulapi.NewClient(&conf.Consul.Config)
-		if err != nil {
-			return nil, err
-		}
-		ln.consul = consul
-	}
-	return ln, nil
 }
 
 //func MakeHasher(conf *router.BalancerConfig) Hasher{

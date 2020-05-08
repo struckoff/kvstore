@@ -14,8 +14,10 @@ services:
       - KVSTORE_CONSUL_ADDRESS=consul-node-0:8500
       - KVSTORE_GEO_LONGITUDE=-180
       - KVSTORE_GEO_LATITUDE=-90
+      - KVSTORE_RPC_LATENCY=200ms
+      - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - ./data/node-0/:/data/
+      - /var/lib/kvstore/data/node-0/:/data/
     restart: always
   kvstore-node-1:
     ports:
@@ -31,8 +33,10 @@ services:
       - KVSTORE_CONSUL_ADDRESS=consul-node-1:8500
       - KVSTORE_GEO_LONGITUDE=1
       - KVSTORE_GEO_LATITUDE=1
+      - KVSTORE_RPC_LATENCY=300ms
+      - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - ./data/node-1/:/data/
+      - /var/lib/kvstore/data/node-1/:/data/
     restart: always
   kvstore-node-2:
     ports:
@@ -48,8 +52,10 @@ services:
       - KVSTORE_CONSUL_ADDRESS=consul-node-2:8500
       - KVSTORE_GEO_LONGITUDE=180
       - KVSTORE_GEO_LATITUDE=90
+      - KVSTORE_RPC_LATENCY=400ms
+      - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - ./data/node-2/:/data/
+      - /var/lib/kvstore/data/node-2/:/data/
     restart: always
 
   consul-server:

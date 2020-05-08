@@ -3,7 +3,9 @@ package config
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"log"
 	"strings"
+	"time"
 )
 
 // If config implies use of consul, this options will be taken from consul KV.
@@ -21,6 +23,7 @@ type BalancerConfig struct {
 	// Which data to store in the database
 	// Possible: kv, geo
 	DataMode DataModeType `envconfig:"DATA_MODE"`
+	Latency  Duration     `envconfig:"HTTP_LATENCY"`
 }
 
 func (bc *BalancerConfig) UnmarshalJSON(cb []byte) error {
@@ -66,4 +69,22 @@ func (bm *BalancerModeType) UnmarshalJSON(cb []byte) error {
 	default:
 		return errors.New("unknown balancer mode")
 	}
+}
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) Decode(c string) error {
+	return d.UnmarshalJSON([]byte(c))
+}
+
+func (d *Duration) UnmarshalJSON(cb []byte) error {
+	dur, err := time.ParseDuration(string(cb))
+	if err != nil {
+		return err
+	}
+	d.Duration = dur
+	log.Printf("HTTP latency: %s", d.Duration.String())
+	return nil
 }

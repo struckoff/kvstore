@@ -134,6 +134,7 @@ type Config struct {
 	// Otherwise it will be taken from config file.
 	Balancer *config.BalancerConfig `envconfig:"BALANCER"`
 	Consul   *ConfigConsul
+	Latency  Duration `envconfig:"RPC_LATENCY"`
 }
 
 func ReadConfig(cfgPath string) (Config, error) {
@@ -443,5 +444,23 @@ func (dn *DiscoverMode) UnmarshalJSON(cb []byte) error {
 	default:
 		return errors.New("wrong node mode")
 	}
+	return nil
+}
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) Decode(c string) error {
+	return d.UnmarshalJSON([]byte(c))
+}
+
+func (d *Duration) UnmarshalJSON(cb []byte) error {
+	dur, err := time.ParseDuration(string(cb))
+	if err != nil {
+		return err
+	}
+	d.Duration = dur
+	log.Printf("RPC latency: %s", d.Duration.String())
 	return nil
 }
