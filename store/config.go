@@ -216,53 +216,53 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 		pair.Key = strings.TrimPrefix(pair.Key, conf.Consul.KVFolder)
 		kvMap[strings.ToLower(pair.Key)] = pair.Value
 	}
-	var balConfig config.BalancerConfig
+	//var balConfig config.BalancerConfig
 
 	if val, ok := kvMap["balancermode"]; ok {
 		log.Printf(logform, "balancermode", val)
-		if err := balConfig.Mode.UnmarshalJSON(val); err != nil {
+		if err := conf.Balancer.Mode.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 
 	if val, ok := kvMap["nodehasher"]; ok {
 		log.Printf(logform, "nodehasher", val)
-		if err := balConfig.NodeHash.UnmarshalJSON(val); err != nil {
+		if err := conf.Balancer.NodeHash.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["datamode"]; ok {
 		log.Printf(logform, "datamode", val)
-		if err := balConfig.DataMode.UnmarshalJSON(val); err != nil {
+		if err := conf.Balancer.DataMode.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["sfc.size"]; ok {
 		log.Printf(logform, "sfc.size", val)
-		if balConfig.SFC == nil {
-			balConfig.SFC = &config.SFCConfig{}
+		if conf.Balancer.SFC == nil {
+			conf.Balancer.SFC = &config.SFCConfig{}
 		}
-		balConfig.SFC.Size, err = strconv.ParseUint(string(val), 10, 64)
+		conf.Balancer.SFC.Size, err = strconv.ParseUint(string(val), 10, 64)
 		if err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["sfc.dimensions"]; ok {
 		log.Printf(logform, "sfc.dimensions", val)
-		if balConfig.SFC == nil {
-			balConfig.SFC = &config.SFCConfig{}
+		if conf.Balancer.SFC == nil {
+			conf.Balancer.SFC = &config.SFCConfig{}
 		}
-		balConfig.SFC.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
+		conf.Balancer.SFC.Dimensions, err = strconv.ParseUint(string(val), 10, 64)
 		if err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["sfc.curve"]; ok {
 		log.Printf(logform, "sfc.curve", val)
-		if balConfig.SFC == nil {
-			balConfig.SFC = &config.SFCConfig{}
+		if conf.Balancer.SFC == nil {
+			conf.Balancer.SFC = &config.SFCConfig{}
 		}
-		if err := balConfig.SFC.Curve.UnmarshalJSON(val); err != nil {
+		if err := conf.Balancer.SFC.Curve.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
@@ -300,7 +300,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	//	balConfig.Ring.ReplicationFactor = int(v)
 	//}
 
-	conf.Balancer = &balConfig
+	//conf.Balancer = &balConfig
 	return nil
 }
 

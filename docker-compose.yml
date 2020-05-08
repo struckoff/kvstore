@@ -1,19 +1,78 @@
 version: "3"
 services:
-
-  kvrouter:
-    image: kvrouter:latest
+  kvstore-node-0:
+    build:
+      context: .
+      dockerfile: store.Dockerfile
     ports:
-      - 9190:9190
-  kvstore-0:
-    image: kvstore:latest
+      - '9190:9190'
+      - '9290:9290'
     environment:
-      - KVSTORE_RPC_ADDRESS=kvstore-0:9291
-      - KVSTORE_KVROUTER_ADDRESS=kvrouter:9290
+      - KVSTORE_NAME=node-0
+      - KVSTORE_ADDRESS=kvstore-node-0:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-0:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-0:8500
+      - KVSTORE_GEO_LONGITUDE=-180
+      - KVSTORE_GEO_LATITUDE=-90
+    volumes:
+      - ./data/node-0/:/data/
     restart: always
-  kvstore-1:
-    image: kvstore:latest
+  kvstore-node-1:
+    ports:
+      - '9191:9190'
+      - '9291:9290'
+    build:
+      context: .
+      dockerfile: store.Dockerfile
     environment:
-      - KVSTORE_RPC_ADDRESS=kvstore-1:9291
-      - KVSTORE_KVROUTER_ADDRESS=kvrouter:9290
+      - KVSTORE_NAME=node-1
+      - KVSTORE_ADDRESS=kvstore-node-1:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-1:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-1:8500
+      - KVSTORE_GEO_LONGITUDE=1
+      - KVSTORE_GEO_LATITUDE=1
+    volumes:
+      - ./data/node-1/:/data/
     restart: always
+  kvstore-node-2:
+    ports:
+      - '9192:9190'
+      - '9292:9290'
+    build:
+      context: .
+      dockerfile: store.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-2
+      - KVSTORE_ADDRESS=kvstore-node-2:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-2:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-2:8500
+      - KVSTORE_GEO_LONGITUDE=180
+      - KVSTORE_GEO_LATITUDE=90
+    volumes:
+      - ./data/node-2/:/data/
+    restart: always
+
+  consul-server:
+    image: 'consul:1.6'
+    ports:
+      - '8500:8500'
+      - '8400:8400'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -server -bootstrap-expect=1 -ui -client 0.0.0.0 -ui -node=consul-server
+
+  consul-node-0:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-0
+  consul-node-1:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-1
+  consul-node-2:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-2

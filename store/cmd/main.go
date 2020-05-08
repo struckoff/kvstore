@@ -21,11 +21,10 @@ func main() {
 	}
 }
 
-func run() error {
+func run() (err error) {
 	var conf store.Config
-	var err error
 	var inn *store.LocalNode
-	// If config implies use of consul, consul agent name  will be  used as name.
+	// If config implies use of consul, consul agent name will be used as name.
 	// Otherwise, hostname will be used instead.
 	errCh := make(chan error)
 
