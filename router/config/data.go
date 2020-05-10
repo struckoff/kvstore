@@ -12,6 +12,24 @@ const (
 	GeoData
 )
 
+func (dm *DataModeType) MarshalJSON() ([]byte, error) {
+	var s string
+	switch *dm {
+	case KVData:
+		s = "KV"
+	case GeoData:
+		s = "Geo"
+	default:
+		return nil, errors.New("unknown data mode")
+	}
+	return []byte("\"" + s + "\""), nil
+
+}
+
+func (dm *DataModeType) Decode(c string) error {
+	return dm.UnmarshalJSON([]byte(c))
+}
+
 func (dm *DataModeType) UnmarshalJSON(cb []byte) error {
 	c := strings.ToLower(string(cb))
 	c = strings.Trim(c, "\"")

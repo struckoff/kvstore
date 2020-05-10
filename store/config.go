@@ -156,7 +156,7 @@ func ReadConfig(cfgPath string) (Config, error) {
 		}
 	}
 	if err := envconfig.Process(envPrefix, &conf); err != nil {
-		return Config{}, err
+		return Config{}, errors.Wrap(err, "failed to read environment variables")
 	}
 
 	if err := conf.Prepare(); err != nil {
@@ -171,17 +171,17 @@ func (conf *Config) Prepare() error {
 		if conf.Name == nil {
 			name, err := os.Hostname()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to read hostname")
 			}
 			conf.Name = &name
 		}
 	case ConsulMode:
 		consul, err := consulapi.NewClient(&conf.Consul.Config)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to create consul client")
 		}
 		if err := conf.fillConfigFromConsul(consul); err != nil {
-			return err
+			return errors.Wrap(err, "failed to fill config from consul")
 		}
 	default:
 		return errors.New("wrong mode")
@@ -202,7 +202,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	if conf.Name != nil {
 		name, err := consul.Agent().NodeName()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to read consul node name")
 		}
 		conf.Name = &name
 	}
@@ -211,7 +211,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	kv := consul.KV()
 	pairs, _, err := kv.List(conf.Consul.KVFolder, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read config from consul kv")
 	}
 	for _, pair := range pairs {
 		pair.Key = strings.TrimPrefix(pair.Key, conf.Consul.KVFolder)
@@ -349,6 +349,10 @@ type CurveType struct {
 	curve.CurveType
 }
 
+func (ct *CurveType) Decode(c string) error {
+	return ct.UnmarshalJSON([]byte(c))
+}
+
 func (ct *CurveType) UnmarshalJSON(cb []byte) error {
 	c := strings.ToLower(string(cb))
 	c = strings.Trim(c, "\"")
@@ -370,6 +374,10 @@ type ConfigConsul struct {
 	// Key prefix for config options stored in consul KV, c
 	KVFolder string //Default: ConfigConsul.Service
 }
+
+//func (ct *ConfigConsul) Decode(c string) error {
+//	return ct.UnmarshalJSON([]byte(c))
+//}
 
 func (ct *ConfigConsul) UnmarshalJSON(cb []byte) error {
 	m := make(map[string]string)
@@ -430,6 +438,10 @@ const (
 	KvrouterMode
 	ConsulMode
 )
+
+func (dn *DiscoverMode) Decode(c string) error {
+	return dn.UnmarshalJSON([]byte(c))
+}
 
 func (dn *DiscoverMode) UnmarshalJSON(cb []byte) error {
 	c := strings.ToLower(string(cb))

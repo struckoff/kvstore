@@ -51,7 +51,7 @@ func NewHost(conf *config.Config) (*Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	kvr, err := NewRouter(bal, hr, ndf)
+	kvr, err := NewRouter(bal, hr, ndf, conf.Balancer)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/pkg/errors"
 	"github.com/struckoff/kvstore/router/balanceradapter"
+	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/nodes"
@@ -13,13 +14,15 @@ type Router struct {
 	bal    balanceradapter.Balancer
 	hasher nodehasher.Hasher
 	ndf    dataitem.NewDataItemFunc
+	conf   *config.BalancerConfig
 }
 
-func NewRouter(bal balanceradapter.Balancer, h nodehasher.Hasher, ndf dataitem.NewDataItemFunc) (*Router, error) {
+func NewRouter(bal balanceradapter.Balancer, h nodehasher.Hasher, ndf dataitem.NewDataItemFunc, conf *config.BalancerConfig) (*Router, error) {
 	r := &Router{
 		bal:    bal,
 		hasher: h,
 		ndf:    ndf,
+		conf:   conf,
 	}
 	return r, nil
 }

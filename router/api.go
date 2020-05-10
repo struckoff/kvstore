@@ -21,7 +21,15 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	r.POST("/put/:key", h.Store)
 	r.GET("/get/*key", h.Receive)
 	r.GET("/list", h.Explore)
+	r.GET("/config", h.Config)
 	return r
+}
+
+func (h *Router) Config(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if err := json.NewEncoder(w).Encode(h.conf); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // Store value for a given key on the remote node

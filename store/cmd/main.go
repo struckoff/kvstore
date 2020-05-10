@@ -11,13 +11,12 @@ import (
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
 	bolt "go.etcd.io/bbolt"
-	"io/ioutil"
 	"log"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 	if err := run(); err != nil {
 		panic(err)
 	}
@@ -34,7 +33,7 @@ func run() (err error) {
 	flag.Parse()
 	conf, err = store.ReadConfig(*cfgPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to parse config")
 	}
 
 	//Initialize database
@@ -77,7 +76,7 @@ func run() (err error) {
 		if err != nil {
 			return err
 		}
-		kvr, err := router.NewRouter(bal, hr, ndf)
+		kvr, err := router.NewRouter(bal, hr, ndf, conf.Balancer)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}

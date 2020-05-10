@@ -26,6 +26,10 @@ type BalancerConfig struct {
 	Latency  Duration     `envconfig:"HTTP_LATENCY"`
 }
 
+//func (bc *BalancerConfig) MarshalJSON() ([]byte, error) {
+//
+//}
+
 func (bc *BalancerConfig) UnmarshalJSON(cb []byte) error {
 	type clone BalancerConfig
 	if err := json.Unmarshal(cb, (*clone)(bc)); err != nil {
@@ -56,6 +60,23 @@ const (
 	ConsistentMode
 )
 
+func (bm *BalancerModeType) MarshalJSON() ([]byte, error) {
+	var s string
+	switch *bm {
+	case SFCMode:
+		s = "SFC"
+	case ConsistentMode:
+		s = "Consistent"
+	default:
+		return nil, errors.New("unknown balancer mode")
+	}
+	return []byte("\"" + s + "\""), nil
+}
+
+func (bm *BalancerModeType) Decode(c string) error {
+	return bm.UnmarshalJSON([]byte(c))
+}
+
 func (bm *BalancerModeType) UnmarshalJSON(cb []byte) error {
 	c := strings.ToLower(string(cb))
 	c = strings.Trim(c, "\"")
@@ -73,6 +94,10 @@ func (bm *BalancerModeType) UnmarshalJSON(cb []byte) error {
 
 type Duration struct {
 	time.Duration
+}
+
+func (d *Duration) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + d.String() + "\""), nil
 }
 
 func (d *Duration) Decode(c string) error {
