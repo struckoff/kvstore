@@ -8,16 +8,18 @@ import { check } from "k6";
 let p_hosts = [
     "http://localhost:9190",
     "http://localhost:9191",
-    "http://localhost:9192"
+    "http://localhost:9192",
+    "http://localhost:9193",
+    "http://localhost:9194",
+    "http://localhost:9195",
+    "http://localhost:9196",
+    "http://localhost:9197",
+    "http://localhost:9198",
+    "http://localhost:9199",
+    "http://localhost:9200",
 ]
 // let dataFile = open("/home/struckoff/Documents/alldata/cut_10k.csv");
 
-let minLat = -90
-let maxLat = 90
-let minLon = -180
-let maxLon = 180
-
-let step = .5
 let keySeqLen = 100
 
 
