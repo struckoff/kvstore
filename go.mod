@@ -13,7 +13,7 @@ require (
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.5.1
-	github.com/struckoff/SFCFramework v0.0.0-20200501184523-2a6f4e1409b0
+	github.com/struckoff/SFCFramework v0.0.0-20200509180128-925a5cfbc9b6
 	go.etcd.io/bbolt v1.3.4
 	google.golang.org/grpc v1.28.1
 )
