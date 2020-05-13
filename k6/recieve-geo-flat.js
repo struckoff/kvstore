@@ -18,9 +18,9 @@ let p_hosts = [
     "http://localhost:9199",
     "http://localhost:9200",
 ]
-// let dataFile = open("/home/struckoff/Documents/alldata/cut_10k.csv");
+let dataFile = open(__ENV["K6_KEYS"]);
 
-let keySeqLen = 100
+// let keySeqLen = 100
 
 
 export let options = {
@@ -30,59 +30,68 @@ export let options = {
     setupTimeout: "30m",
 //   minIterationDuration: "100ms"
 };
-
 export function setup() {
-    var keys = clusterKeys()
-    var keySeqs = []
-    for (var iter=0;iter<__ENV["K6_ITERATIONS"];iter++){
-        keySeqs[iter] = genKeySeq(keySeqLen, keys)
-    }
+    var keySeqs = dataFile.split("\n")
     return keySeqs
 }
 
-function keyCompare(k0s, k1s){
-    var k0 = JSON.parse(k0s)
-    var k1 = JSON.parse(k1s)
-    if (k0.Lon > k1.Lon){
-        return true
-    }
-    if (k0.Lat > k1.Lat){
-        return true
-    }
-    return false
-}
 
-function clusterKeys(){
-    var cluster = http.get(p_hosts[0] + "/list");
-    var body = JSON.parse(cluster.body)
-    var keys = []
+// export function setup() {
+//     var keys = clusterKeys()
+//     var keySeqs = []
+//     for (var iter=0;iter<__ENV["K6_ITERATIONS"];iter++){
+//         keySeqs[iter] = genKeySeq(keySeqLen, keys)
+//     }
+//     return keySeqs
+// }
 
-    Object.getOwnPropertyNames(body).forEach(function(node) {
-        keys = keys.concat(body[node])
-    })
+// function keyCompare(k0s, k1s){
+//     var k0 = JSON.parse(k0s)
+//     var k1 = JSON.parse(k1s)
+//     if (k0.Lon > k1.Lon){
+//         return true
+//     }
+//     if (k0.Lat > k1.Lat){
+//         return true
+//     }
+//     return false
+// }
 
-    keys.sort(keyCompare)
+// function clusterKeys(){
+//     var cluster = http.get(p_hosts[0] + "/list");
+//     var body = JSON.parse(cluster.body)
+//     var keys = []
 
-    return keys
-}
+//     Object.getOwnPropertyNames(body).forEach(function(node) {
+//         keys = keys.concat(body[node])
+//     })
 
-function genKeySeq(count, keys) {
-    var start =  Math.floor(Math.random() * (keys.length-count))
-    var key = ""
+//     keys.sort(keyCompare)
 
-    for (var iter = start; iter < count+start; iter++) {
-        key += "/"+keys[iter%keys.length]
-        // console.log(keys[iter%keys.length])
-    }
-    return key
-}
+//     // console.log(keys.length)
+
+//     return keys
+// }
+
+// function genKeySeq(count, keys) {
+//     var start =  Math.floor(Math.random() * (keys.length-count))
+//     var key = ""
+
+//     for (var iter = start; iter < count+start; iter++) {
+//         key += "/"+keys[iter%keys.length]
+//         // console.log(keys[iter%keys.length])
+//     }
+//     return key
+// }
 
 export default function(keySeqs) {
-    let maxIter = __ENV["K6_ITERATIONS"] / __ENV["K6_VUS"]
+    let maxIter = Math.floor(__ENV["K6_ITERATIONS"] / __ENV["K6_VUS"])
     let idx = ((maxIter * (__VU - 1)) + __ITER) % (keySeqs.length)
+
 
     // console.log(key, idx, __ITER, __VU, maxIter, points.length)
     // console.log(key)
+    // console.log(keySeqs.length,idx, keySeqs[idx])
     var res = http.get(p_hosts[__VU % p_hosts.length] + "/get"+keySeqs[idx], null, {tags: {name: 'get_download_geo'}});
     if (res.status >= 400){
         console.error(res.body)

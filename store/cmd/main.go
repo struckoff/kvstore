@@ -102,12 +102,12 @@ func run() (err error) {
 		return errors.New("wrong node node")
 	}
 
-	go func(errCh chan error, conf *store.Config) {
-		if err := inn.RunRPCServer(conf); err != nil {
-			errCh <- errors.Wrap(err, "failed to run RPC server")
-			return
-		}
-	}(errCh, &conf)
+	//go func(errCh chan error, conf *store.Config) {
+	if err := inn.RunRPCServer(&conf, errCh); err != nil {
+		//errCh <- errors.Wrap(err, "failed to run RPC server")
+		return errors.Wrap(err, "failed to run RPC server")
+	}
+	//}(errCh, &conf)
 
 	//Run discovery connection
 	go func(errCh chan error, inn *store.LocalNode, conf *store.Config) {

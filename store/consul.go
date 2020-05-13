@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
@@ -16,6 +17,7 @@ import (
 // RunRouter - register service in consul
 // Function register TTL check and sends heartbeat each Config.Health.CheckInterval
 func (inn *LocalNode) RunConsul(conf *Config) error {
+	log.Println("Announcing in consul")
 	if err := inn.consulAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in consul")
 	}
@@ -51,7 +53,7 @@ func (inn *LocalNode) consulAnnounce(conf *Config) (err error) {
 	acc := consulapi.AgentServiceCheck{
 		CheckID: checkID,
 		Name:    checkID,
-		Status:  "passing",
+		Status:  consulapi.HealthCritical,
 		//TCP:      conf.RPCAddress,
 		//Interval: conf.ConfigConsul.CheckInterval,
 		//Timeout:  conf.ConfigConsul.CheckTimeout,
@@ -100,8 +102,15 @@ func (inn *LocalNode) consulWatch(conf *Config) error {
 func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 	nCh := make(chan nodes.Node)
 	defer close(nCh)
+
+	lwID := atomic.LoadInt64(inn.lwID)
+	if lwID >= int64(id) {
+		log.Printf("event id %d less than last processed %d", id, lwID)
+		return
+	}
+
 	entries, ok := data.([]*consulapi.ServiceEntry)
-	//fmt.Println(id, len(entries))
+	//log.Println(id, len(entries))
 	if !ok {
 		return
 	}
@@ -129,6 +138,12 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 		return
 	}
 	inn.Move(locations)
+
+	if swapped := atomic.CompareAndSwapInt64(inn.lwID, lwID, int64(id)); !swapped {
+		log.Println("last watcher ID was not swapped")
+		inn.serviceHandler(id, entries)
+		return
+	}
 }
 
 //registerExternalNode - register nodes from consul in local kvrouter.

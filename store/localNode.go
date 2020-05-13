@@ -20,6 +20,7 @@ var mainBucket = []byte("pairs")
 
 // Return new instance LocalNode.
 func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, error) {
+	lwID := int64(0)
 	ln := &LocalNode{
 		id:          *conf.Name,
 		address:     conf.Address,
@@ -31,6 +32,7 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router) (*LocalNode, er
 		geo:         conf.Geo,
 		rpclatency:  conf.Latency.Duration,
 		httplatency: conf.Balancer.Latency.Duration,
+		lwID:        &lwID,
 	}
 	if ln.kvr != nil {
 		h, err := ln.kvr.Hasher().Sum(ln.meta())
@@ -66,6 +68,7 @@ type LocalNode struct {
 	h           uint64
 	rpclatency  time.Duration
 	httplatency time.Duration
+	lwID        *int64
 }
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {
@@ -165,9 +168,11 @@ func (inn *LocalNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
 		}
 		for iter := range keys {
 			val := bc.Get([]byte(keys[iter]))
+			ok := val != nil
 			kvs.KVs[iter] = &rpcapi.KeyValue{
 				Key:   keys[iter],
 				Value: string(val),
+				Found: ok,
 			}
 		}
 		return nil

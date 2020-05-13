@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (inn *LocalNode) RunRPCServer(conf *Config) error {
+func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	addy, err := net.ResolveTCPAddr("tcp", conf.RPCAddress)
 	if err != nil {
 		return err
@@ -23,8 +23,24 @@ func (inn *LocalNode) RunRPCServer(conf *Config) error {
 	inn.rpcserver = grpc.NewServer()
 	rpcapi.RegisterRPCNodeServer(inn.rpcserver, inn)
 
+	go func(errCh chan<- error) {
+		errCh <- inn.rpcserver.Serve(inbound)
+	}(errCh)
+	//if err := checkTCP(inbound.Addr().String()); err != nil {
+	//	return err
+	//}
 	log.Printf("RPC server listening on %s", inbound.Addr().String())
-	if err := inn.rpcserver.Serve(inbound); err != nil {
+
+	//if err := inn.rpcserver.Serve(inbound); err != nil {
+	//	return err
+	//}
+
+	return nil
+}
+
+func checkTCP(addr string) error {
+	_, err := net.Dial("tcp", addr)
+	if err != nil {
 		return err
 	}
 	return nil
