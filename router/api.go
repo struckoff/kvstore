@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"unsafe"
@@ -22,7 +23,27 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	r.GET("/get/*key", h.Receive)
 	r.GET("/list", h.Explore)
 	r.GET("/config", h.Config)
+	r.OPTIONS("/config/log/enable", h.EnableLog)
+	r.OPTIONS("/config/log/disable", h.DisableLog)
 	return r
+}
+
+func (h *Router) EnableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	msg := "logs enabled"
+	log.SetOutput(os.Stdout)
+	log.Println(msg)
+	if _, err := w.Write([]byte(msg)); err != nil {
+		log.Println(err)
+	}
+}
+
+func (h *Router) DisableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	msg := "logs disabled"
+	log.Println(msg)
+	log.SetOutput(ioutil.Discard)
+	if _, err := w.Write([]byte(msg)); err != nil {
+		log.Println(err)
+	}
 }
 
 func (h *Router) Config(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -86,12 +107,17 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	}
 
 	var resp rpcapi.KeyValues
+	resp.KVs = make([]*rpcapi.KeyValue, 0)
 	for iter := 0; iter < len(nmk); iter++ {
 		kvs := <-kvsCh
 		if kvs == nil {
 			continue
 		}
-		resp.KVs = append(resp.KVs, kvs.KVs...)
+		for _, kv := range kvs.KVs {
+			if kv.Found {
+				resp.KVs = append(resp.KVs, kv)
+			}
+		}
 	}
 
 	if err := json.NewEncoder(w).Encode(resp.KVs); err != nil {

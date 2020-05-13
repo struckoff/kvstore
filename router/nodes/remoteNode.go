@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"sync"
+	"time"
 )
 
 // RemoteNode represents compunction API with cluster unit
@@ -158,7 +159,9 @@ func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNod
 	if err != nil {
 		return nil, err
 	}
-	meta, err := c.RPCMeta(context.TODO(), &rpcapi.Empty{})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	meta, err := c.RPCMeta(ctx, &rpcapi.Empty{}, grpc.WaitForReady(true))
 	if err != nil {
 		return nil, err
 	}

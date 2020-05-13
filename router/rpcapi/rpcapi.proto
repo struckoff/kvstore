@@ -5,6 +5,7 @@ package rpcapi;
 message KeyValue {
 	string Key = 1;
 	string Value = 2;
+	bool Found = 3;
 }
 
 message Empty {}
