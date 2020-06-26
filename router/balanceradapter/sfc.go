@@ -29,7 +29,7 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 		conf.SFC.Dimensions,
 		conf.SFC.Size,
 		tf,
-		optimizer.RangeOptimizer,
+		optimizer.PowerRangeOptimizer,
 		nil)
 	if err != nil {
 		return nil, err
