@@ -1,6 +1,6 @@
 FROM golang:latest
-COPY . $GOPATH/src/github.com/struckoff/kvstore/
-COPY store/cmd/config-docker.json /config.json
+COPY .. $GOPATH/src/github.com/struckoff/kvstore/
+COPY cmd/config-docker.json /config.json
 WORKDIR $GOPATH/src/github.com/struckoff/kvstore/store/cmd
 RUN go get ./
 RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o /kvstore

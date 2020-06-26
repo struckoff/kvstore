@@ -1,7 +1,7 @@
 # build the kvstore binary
 FROM golang:latest AS kvstore-builder
-COPY . $GOPATH/src/github.com/struckoff/kvstore/
-COPY store/cmd/config-docker.json /config-docker.json
+COPY .. $GOPATH/src/github.com/struckoff/kvstore/
+COPY cmd/config-docker.json /config-docker.json
 WORKDIR $GOPATH/src/github.com/struckoff/kvstore/store/cmd
 RUN go get ./
 RUN CGO_ENABLED=0 go build -o /kvstore
