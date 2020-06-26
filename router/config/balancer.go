@@ -60,15 +60,21 @@ const (
 	ConsistentMode
 )
 
-func (bm *BalancerModeType) MarshalJSON() ([]byte, error) {
-	var s string
+func (bm *BalancerModeType) String() (string, error) {
 	switch *bm {
 	case SFCMode:
-		s = "SFC"
+		return "SFC", nil
 	case ConsistentMode:
-		s = "Consistent"
+		return "Consistent", nil
 	default:
-		return nil, errors.New("unknown balancer mode")
+		return "", errors.New("unknown balancer mode")
+	}
+}
+
+func (bm *BalancerModeType) MarshalJSON() ([]byte, error) {
+	s, err := bm.String()
+	if err != nil {
+		return nil, err
 	}
 	return []byte("\"" + s + "\""), nil
 }

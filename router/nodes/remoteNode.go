@@ -11,6 +11,77 @@ import (
 	"time"
 )
 
+const MaxCallSendMsgSize = 100 * 1024 * 1024
+const MaxRecvSendMsgSize = 100 * 1024 * 1024
+
+// NewExternalNode - create a new instance of an external by given meta information.
+func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNode, error) {
+	c, err := enClient(meta.RPCAddress)
+	//conn, err := grpc.Dial(meta.RPCAddress, grpc.WithInsecure()) // TODO Make it secure
+	//if err != nil {
+	//	return nil, err
+	//}
+	//c := rpcapi.NewRPCNodeClient(conn)
+	var hashsum uint64
+	if hasher != nil {
+		hashsum, err = hasher.Sum(meta)
+		if err != nil {
+			return nil, err
+		}
+	}
+	en := newExternalNode(meta, c, hashsum)
+	return en, nil
+}
+
+// NewExternalNodeByAddr - create a new instance of an external node.
+// Function asks remote node for it meta information by RPC
+func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNode, error) {
+	c, err := enClient(rpcaddr)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	meta, err := c.RPCMeta(ctx, &rpcapi.Empty{}, grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	hashsum, err := hasher.Sum(meta)
+	if err != nil {
+		return nil, err
+	}
+	en := newExternalNode(meta, c, hashsum)
+	return en, nil
+}
+
+func newExternalNode(meta *rpcapi.NodeMeta, c rpcapi.RPCNodeClient, h uint64) *RemoteNode {
+	return &RemoteNode{
+		id:         meta.ID,
+		address:    meta.Address,
+		rpcaddress: meta.RPCAddress,
+		p:          NewPower(meta.Power),
+		c:          NewCapacity(meta.Capacity),
+		rpcclient:  c,
+		h:          h,
+		geo:        meta.Geo,
+	}
+}
+
+func enClient(addr string) (rpcapi.RPCNodeClient, error) {
+	// TODO Make it secure
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallSendMsgSize(MaxCallSendMsgSize),
+			grpc.MaxCallRecvMsgSize(MaxRecvSendMsgSize),
+		))
+
+	if err != nil {
+		return nil, err
+	}
+	c := rpcapi.NewRPCNodeClient(conn)
+	return c, nil
+}
+
 // RemoteNode represents compunction API with cluster unit
 // It also contains meta information
 type RemoteNode struct {
@@ -132,65 +203,4 @@ func (n *RemoteNode) Move(nk map[Node][]string) error {
 	}
 	_, err := n.rpcclient.RPCMove(context.TODO(), mr)
 	return err
-}
-
-// NewExternalNode - create a new instance of an external by given meta information.
-func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNode, error) {
-	conn, err := grpc.Dial(meta.RPCAddress, grpc.WithInsecure()) // TODO Make it secure
-	if err != nil {
-		return nil, err
-	}
-	c := rpcapi.NewRPCNodeClient(conn)
-	var hashsum uint64
-	if hasher != nil {
-		hashsum, err = hasher.Sum(meta)
-		if err != nil {
-			return nil, err
-		}
-	}
-	en := newExternalNode(meta, c, hashsum)
-	return en, nil
-}
-
-// NewExternalNodeByAddr - create a new instance of an external node.
-// Function asks remote node for it meta information by RPC
-func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNode, error) {
-	c, err := enClient(rpcaddr)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	meta, err := c.RPCMeta(ctx, &rpcapi.Empty{}, grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	hashsum, err := hasher.Sum(meta)
-	if err != nil {
-		return nil, err
-	}
-	en := newExternalNode(meta, c, hashsum)
-	return en, nil
-}
-
-func newExternalNode(meta *rpcapi.NodeMeta, c rpcapi.RPCNodeClient, h uint64) *RemoteNode {
-	return &RemoteNode{
-		id:         meta.ID,
-		address:    meta.Address,
-		rpcaddress: meta.RPCAddress,
-		p:          NewPower(meta.Power),
-		c:          NewCapacity(meta.Capacity),
-		rpcclient:  c,
-		h:          h,
-		geo:        meta.Geo,
-	}
-}
-
-func enClient(addr string) (rpcapi.RPCNodeClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure()) // TODO Make it secure
-	if err != nil {
-		return nil, err
-	}
-	c := rpcapi.NewRPCNodeClient(conn)
-	return c, nil
 }
