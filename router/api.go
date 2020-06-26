@@ -97,7 +97,9 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	for n, keys := range nmk {
 		func(n nodes.Node, keys []string, kvsCh chan<- *rpcapi.KeyValues) {
 			var kvs *rpcapi.KeyValues
-			defer func() { kvsCh <- kvs }()
+			defer func() {
+				kvsCh <- kvs
+			}()
 			kvs, err = n.Receive(keys)
 			if err != nil {
 				log.Print(err)

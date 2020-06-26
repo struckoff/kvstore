@@ -1,6 +1,10 @@
 package store
 
 import (
+	"fmt"
+	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
 	"io/ioutil"
 	"os"
@@ -21,6 +25,7 @@ func TestNewInternalNode(t *testing.T) {
 		p     float64
 		c     float64
 		db    *bolt.DB
+		bConf config.BalancerConfig
 	}
 	tests := []struct {
 		name string
@@ -36,6 +41,11 @@ func TestNewInternalNode(t *testing.T) {
 				p:     1.1,
 				c:     2.3,
 				db:    &bolt.DB{},
+				bConf: config.BalancerConfig{
+					Latency: config.Duration{
+						Duration: 0,
+					},
+				},
 			},
 			want: &LocalNode{
 				id:         "test_id",
@@ -55,11 +65,28 @@ func TestNewInternalNode(t *testing.T) {
 				RPCAddress: tt.args.raddr,
 				Power:      tt.args.p,
 				Capacity:   tt.args.c,
+				Balancer:   &tt.args.bConf,
 			}
-			got, _ := NewLocalNode(conf, tt.args.db, nil)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewLocalNode() = %v, want %v", got, tt.want)
-			}
+			metrics := make(chan *influxdb2.Point)
+			defer close(metrics)
+			go func(metrics chan *influxdb2.Point) {
+				for m := range metrics {
+					if m == nil {
+						fmt.Println("closed")
+						return
+					}
+					continue
+				}
+			}(metrics)
+			got, _ := NewLocalNode(conf, tt.args.db, nil, metrics)
+			assert.Equal(t, tt.want.id, got.id)
+			assert.Equal(t, tt.want.rpcserver, got.rpcserver)
+			assert.Equal(t, tt.want.consul, got.consul)
+			assert.Equal(t, tt.want.kvr, got.kvr)
+			assert.Equal(t, tt.want.db, got.db)
+			//if !reflect.DeepEqual(, ) {
+			//	t.Errorf("NewLocalNode() = %v, want %v", got, tt.want)
+			//}
 		})
 	}
 }
@@ -76,7 +103,7 @@ func TestInternalNode_Meta(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   rpcapi.NodeMeta
+		want   *rpcapi.NodeMeta
 	}{
 		{
 			name: "test",
@@ -88,7 +115,7 @@ func TestInternalNode_Meta(t *testing.T) {
 				c:          nodes.NewCapacity(2.3),
 				db:         nil,
 			},
-			want: rpcapi.NodeMeta{
+			want: &rpcapi.NodeMeta{
 				ID:         "test_id",
 				Address:    "test_addr",
 				RPCAddress: "test_raddr",
@@ -107,9 +134,11 @@ func TestInternalNode_Meta(t *testing.T) {
 				c:          tt.fields.c,
 				db:         tt.fields.db,
 			}
-			if got := n.Meta(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Meta() = %v, want %v", got, tt.want)
-			}
+			got := n.Meta()
+			assert.Equal(t, tt.want, got)
+			//if got := n.Meta(); !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("Meta() = %v, want %v", got, tt.want)
+			//}
 		})
 	}
 }
@@ -347,9 +376,9 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 		name                    string
 		args                    args
 		wantErr                 bool
-		wantBeforeRemove        []kv
+		wantBeforeRemove        *rpcapi.KeyValues
 		wantExploreBeforeRemove []string
-		wantAfterRemove         []kv
+		wantAfterRemove         *rpcapi.KeyValues
 		wantExploreAfterRemove  []string
 	}{
 		{
@@ -357,28 +386,29 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			args: args{
 				kvs: []kv{
 					{"t0", []byte("t0val")},
-					{"t1", []byte("t0val")},
-					{"t2", []byte("t0val")},
-					{"t3", []byte("t0val")},
-					{"t4", []byte("t0val")},
+					{"t1", []byte("t1val")},
+					{"t2", []byte("t2val")},
+					{"t3", []byte("t3val")},
+					{"t4", []byte("t4val")},
 				},
 				removeKeys: []string{"t0", "t2", "t3"},
 			},
 			wantErr: false,
-			wantBeforeRemove: []kv{
-				{"t0", []byte("t0val")},
-				{"t1", []byte("t0val")},
-				{"t2", []byte("t0val")},
-				{"t3", []byte("t0val")},
-				{"t4", []byte("t0val")},
+			wantBeforeRemove: &rpcapi.KeyValues{
+				KVs: []*rpcapi.KeyValue{
+					{Key: "t0", Value: "t0val", Found: true},
+					{Key: "t1", Value: "t1val", Found: true},
+					{Key: "t2", Value: "t2val", Found: true},
+					{Key: "t3", Value: "t3val", Found: true},
+					{Key: "t4", Value: "t4val", Found: true},
+				},
 			},
 			wantExploreBeforeRemove: []string{"t0", "t1", "t2", "t3", "t4"},
-			wantAfterRemove: []kv{
-				{"t1", []byte("t0val")},
-				{"t4", []byte("t0val")},
-				{"t0", nil},
-				{"t2", nil},
-				{"t3", nil},
+			wantAfterRemove: &rpcapi.KeyValues{
+				KVs: []*rpcapi.KeyValue{
+					{Key: "t1", Value: "t1val", Found: true},
+					{Key: "t4", Value: "t4val", Found: true},
+				},
 			},
 			wantExploreAfterRemove: []string{"t1", "t4"},
 		},
@@ -387,28 +417,32 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			args: args{
 				kvs: []kv{
 					{"t0", []byte("t0val")},
-					{"t1", []byte("t0val")},
-					{"t2", []byte("t0val")},
-					{"t3", []byte("t0val")},
-					{"t4", []byte("t0val")},
+					{"t1", []byte("t1val")},
+					{"t2", []byte("t2val")},
+					{"t3", []byte("t3val")},
+					{"t4", []byte("t4val")},
 				},
 				removeKeys: []string{"k0", "k2", "k3"},
 			},
 			wantErr: false,
-			wantBeforeRemove: []kv{
-				{"t0", []byte("t0val")},
-				{"t1", []byte("t0val")},
-				{"t2", []byte("t0val")},
-				{"t3", []byte("t0val")},
-				{"t4", []byte("t0val")},
+			wantBeforeRemove: &rpcapi.KeyValues{
+				KVs: []*rpcapi.KeyValue{
+					{Key: "t0", Value: "t0val", Found: true},
+					{Key: "t1", Value: "t1val", Found: true},
+					{Key: "t2", Value: "t2val", Found: true},
+					{Key: "t3", Value: "t3val", Found: true},
+					{Key: "t4", Value: "t4val", Found: true},
+				},
 			},
 			wantExploreBeforeRemove: []string{"t0", "t1", "t2", "t3", "t4"},
-			wantAfterRemove: []kv{
-				{"t0", []byte("t0val")},
-				{"t1", []byte("t0val")},
-				{"t2", []byte("t0val")},
-				{"t3", []byte("t0val")},
-				{"t4", []byte("t0val")},
+			wantAfterRemove: &rpcapi.KeyValues{
+				KVs: []*rpcapi.KeyValue{
+					{Key: "t0", Value: "t0val", Found: true},
+					{Key: "t1", Value: "t1val", Found: true},
+					{Key: "t2", Value: "t2val", Found: true},
+					{Key: "t3", Value: "t3val", Found: true},
+					{Key: "t4", Value: "t4val", Found: true},
+				},
 			},
 			wantExploreAfterRemove: []string{"t0", "t1", "t2", "t3", "t4"},
 		},
@@ -421,8 +455,19 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
+			metrics := make(chan *influxdb2.Point)
+			defer close(metrics)
+			go func(metrics chan *influxdb2.Point) {
+				for m := range metrics {
+					if m == nil {
+						return
+					}
+					continue
+				}
+			}(metrics)
 			n := &LocalNode{
-				db: db,
+				db:      db,
+				metrics: metrics,
 			}
 			for _, kv := range tt.args.kvs {
 				if err := n.Store(kv.key, kv.val); (err != nil) != tt.wantErr {
@@ -441,18 +486,20 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				t.Errorf("Before remove: Explore() = %v, want %v", explore, tt.wantExploreBeforeRemove)
 			}
 
-			for _, kv := range tt.wantBeforeRemove {
-				val, err := n.Receive(kv.key)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Before remove: Receive(%s) = %v, want %v", kv.key, err, tt.wantErr)
-				}
-				if !reflect.DeepEqual(val, kv.val) {
-					t.Errorf("Before remove: Receive(%s) = %v, want %v", kv.key, val, kv.val)
-				}
+			keys := make([]string, len(tt.wantBeforeRemove.KVs))
+			for iter := range tt.wantBeforeRemove.KVs {
+				keys[iter] = tt.wantBeforeRemove.KVs[iter].Key
 			}
 
+			kvs, err := n.Receive(keys)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Before remove: Receive error = %w", err)
+			}
+
+			assert.Equal(t, tt.wantBeforeRemove, kvs)
+
 			for _, key := range tt.args.removeKeys {
-				if err := n.Remove(key); (err != nil) != tt.wantErr {
+				if err := n.Remove([]string{key}); (err != nil) != tt.wantErr {
 					t.Errorf("Remove() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
@@ -464,19 +511,24 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 
 			sort.Strings(explore)
 			sort.Strings(tt.wantExploreAfterRemove)
-			if !reflect.DeepEqual(explore, tt.wantExploreAfterRemove) {
-				t.Errorf("After remove: Explore() = %v, want %v", explore, tt.wantExploreAfterRemove)
+			assert.Equal(t, tt.wantExploreAfterRemove, explore)
+
+			kvs, err = n.Receive(keys)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("After remove: Receive error = %w", err)
 			}
 
-			for _, kv := range tt.wantAfterRemove {
-				val, err := n.Receive(kv.key)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("After remove: Receive(%s) = %v, want %v", kv.key, err, tt.wantErr)
-				}
-				if !reflect.DeepEqual(val, kv.val) {
-					t.Errorf("After remove: Receive(%s) = %v, want %v", kv.key, val, kv.val)
-				}
+			keys = make([]string, len(tt.wantAfterRemove.KVs))
+			for iter := range tt.wantAfterRemove.KVs {
+				keys[iter] = tt.wantAfterRemove.KVs[iter].Key
 			}
+
+			kvs, err = n.Receive(keys)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Before remove: Receive error = %w", err)
+			}
+
+			assert.Equal(t, tt.wantAfterRemove, kvs)
 		})
 	}
 }

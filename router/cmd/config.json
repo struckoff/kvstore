@@ -6,7 +6,7 @@
     "DataMode": "geo",
     "SFC": {
       "Dimensions":2,
-      "Size":64,
+      "Size":256,
       "Curve": "morton"
     },
     "NodeHash": "geosfc"

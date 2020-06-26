@@ -118,10 +118,11 @@ KVSTORE_CONSUL_KVFOLDER
 
 type Config struct {
 	//force name of node instead of hostname or consul
-	Name       *string         `envconfig:"NAME"`
-	Address    string          `envconfig:"ADDRESS"`
-	RPCAddress string          `envconfig:"RPC_ADDRESS"`
-	Geo        *rpcapi.GeoData `envconfig:"GEO"`
+	Name          *string         `envconfig:"NAME"`
+	Address       string          `envconfig:"ADDRESS"`
+	RPCAddress    string          `envconfig:"RPC_ADDRESS"`
+	InfluxAddress string          `envconfig:"INFLUX_ADDRESS"`
+	Geo           *rpcapi.GeoData `envconfig:"GEO"`
 	//standalone, consul, kvrouter
 	Mode     DiscoverMode `envconfig:"MODE"`
 	Power    float64      `envconfig:"POWER"`

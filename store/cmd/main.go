@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	influxdb2 "github.com/influxdata/influxdb-client-go"
 	"github.com/pkg/errors"
 	"github.com/struckoff/SFCFramework/curve"
 	"github.com/struckoff/kvstore/router"
@@ -43,6 +44,30 @@ func run() (err error) {
 	}
 	defer db.Close()
 
+	//Run metrics client
+	metrics := make(chan *influxdb2.Point, 100)
+	go func(points <-chan *influxdb2.Point) {
+		client := influxdb2.NewClientWithOptions(
+			conf.InfluxAddress,
+			"",
+			influxdb2.DefaultOptions().SetBatchSize(20))
+		defer client.Close()
+		writeApi := client.WriteApi("", "kvstore/autogen")
+		defer writeApi.Flush()
+		balancermode, err := conf.Balancer.Mode.String()
+		if err != nil {
+			log.Printf("unable to run metrics client: %w", err)
+			return
+		}
+		for p := range points {
+			p.AddTag("balancermode", balancermode)
+			writeApi.WritePoint(p)
+			//if err := ; err != nil {
+			//	log.Println("Metric write error: %s\n", err.Error())
+			//}
+		}
+	}(metrics)
+
 	// create balancer
 	switch conf.Mode {
 	case store.StandaloneMode, store.ConsulMode:
@@ -81,7 +106,7 @@ func run() (err error) {
 			return errors.Wrap(err, "failed to initialize router")
 		}
 		//Initialize local node
-		inn, err = store.NewLocalNode(&conf, db, kvr)
+		inn, err = store.NewLocalNode(&conf, db, kvr, metrics)
 		if err != nil {
 			return err
 		}
@@ -94,7 +119,7 @@ func run() (err error) {
 			}
 		}(errCh, &conf)
 	case store.KvrouterMode:
-		inn, err = store.NewLocalNode(&conf, db, nil)
+		inn, err = store.NewLocalNode(&conf, db, nil, metrics)
 		if err != nil {
 			return err
 		}
