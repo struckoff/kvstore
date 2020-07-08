@@ -7,16 +7,16 @@ import { check } from "k6";
 // let p_host = "http://ip-172-31-42-150.eu-central-1.compute.internal:47375"
 let p_hosts = [
     "http://localhost:9190",
-    "http://localhost:9191",
-    "http://localhost:9192",
-    "http://localhost:9193",
-    "http://localhost:9194",
-    "http://localhost:9195",
-    "http://localhost:9196",
-    "http://localhost:9197",
-    "http://localhost:9198",
-    "http://localhost:9199",
-    "http://localhost:9200",
+    // "http://localhost:9191",
+    // "http://localhost:9192",
+    // "http://localhost:9193",
+    // "http://localhost:9194",
+    // "http://localhost:9195",
+    // "http://localhost:9196",
+    // "http://localhost:9197",
+    // "http://localhost:9198",
+    // "http://localhost:9199",
+    // "http://localhost:9200",
 ]
 let dataFile = open(__ENV["K6_KEYS"]);
 

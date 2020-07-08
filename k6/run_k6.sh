@@ -1,8 +1,8 @@
 # K6_VUS=100
 K6_VUS=300
-# K6_VUS=3
-K6_ITERATIONS=259200
-# K6_ITERATIONS=50000
+#K6_VUS=1
+K6_ITERATIONS=15000
+#K6_ITERATIONS=5
 # K6_KEYS=/data/datafile
 
 # ./kvstoregeokeys -address="http://localhost:9191" -l 100 -n $K6_ITERATIONS > ./data/datafile
