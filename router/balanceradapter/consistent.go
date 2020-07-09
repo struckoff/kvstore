@@ -85,3 +85,7 @@ func (c *Consistent) GetNode(id string) (nodes.Node, error) {
 	}
 	return n, nil
 }
+
+func (c *Consistent) Optimize() error {
+	return nil
+}

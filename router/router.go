@@ -7,6 +7,8 @@ import (
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/nodes"
+	"log"
+	"sync"
 )
 
 // Router represents bounding of network api with kvrouter lib and local node
@@ -72,4 +74,35 @@ func (h *Router) GetNode(id string) (nodes.Node, error) {
 
 func (h *Router) Hasher() nodehasher.Hasher {
 	return h.hasher
+}
+
+func (h *Router) redistributeKeys() error {
+	var wg sync.WaitGroup
+	ns, err := h.GetNodes()
+	if err != nil {
+		return err
+	}
+	for _, n := range ns {
+		go func(n nodes.Node, wg *sync.WaitGroup) {
+			res := make(map[nodes.Node][]string)
+			keys, err := n.Explore()
+			if err != nil {
+				log.Printf("failed to explore node(%s): %s", n.ID(), err.Error())
+				return
+			}
+			for iter := range keys {
+				en, err := h.LocateKey(keys[iter])
+				if err != nil {
+					log.Printf("failed to locate key(%s): %s", keys[iter], err.Error())
+					continue
+				}
+				if en.ID() != n.ID() {
+					res[en] = append(res[en], keys[iter])
+				}
+			}
+			n.Move(res)
+		}(n, &wg)
+	}
+	wg.Wait()
+	return nil
 }

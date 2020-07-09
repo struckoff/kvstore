@@ -25,6 +25,7 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	r.GET("/config", h.Config)
 	r.OPTIONS("/config/log/enable", h.EnableLog)
 	r.OPTIONS("/config/log/disable", h.DisableLog)
+	r.OPTIONS("/optimize", h.Optimize)
 	return r
 }
 
@@ -44,6 +45,23 @@ func (h *Router) DisableLog(w http.ResponseWriter, r *http.Request, ps httproute
 	if _, err := w.Write([]byte(msg)); err != nil {
 		log.Println(err)
 	}
+}
+
+func (h *Router) Optimize(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	log.Println("optimize started")
+	if err := h.bal.Optimize(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err.Error())
+		return
+	}
+	if err := h.redistributeKeys(); err != nil {
+		log.Printf("Error redistributing keys: %s", err.Error())
+		return
+	}
+	if _, err := w.Write([]byte("optimize complete")); err != nil {
+		log.Println(err)
+	}
+	log.Println("optimize complete")
 }
 
 func (h *Router) Config(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

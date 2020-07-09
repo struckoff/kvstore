@@ -104,3 +104,7 @@ func (sb *SFC) GetNode(id string) (nodes.Node, error) {
 func (sb *SFC) SFC() curve.Curve {
 	return sb.bal.SFC()
 }
+
+func (sb *SFC) Optimize() error {
+	return sb.bal.Optimize()
+}

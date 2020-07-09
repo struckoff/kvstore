@@ -10,7 +10,6 @@ import (
 	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -86,7 +85,7 @@ func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Em
 		return nil, err
 	}
 	log.Printf("node(%s) registered", en.ID())
-	if err := h.redistributeKeys(); err != nil {
+	if err := h.kvr.redistributeKeys(); err != nil {
 		return nil, err
 	}
 	return &rpcapi.Empty{}, nil
@@ -118,7 +117,7 @@ func (h *Host) onRemoveHandler(nodeID string) func() {
 			log.Printf("Error removing node(%s): %s", nodeID, err.Error())
 			return
 		}
-		if err := h.redistributeKeys(); err != nil {
+		if err := h.kvr.redistributeKeys(); err != nil {
 			log.Printf("Error redistributing keys: %s", err.Error())
 			return
 		}
@@ -127,33 +126,33 @@ func (h *Host) onRemoveHandler(nodeID string) func() {
 	}
 }
 
-func (h *Host) redistributeKeys() error {
-	var wg sync.WaitGroup
-	ns, err := h.kvr.GetNodes()
-	if err != nil {
-		return err
-	}
-	for _, n := range ns {
-		go func(n nodes.Node, wg *sync.WaitGroup) {
-			res := make(map[nodes.Node][]string)
-			keys, err := n.Explore()
-			if err != nil {
-				log.Printf("failed to explore node(%s): %s", n.ID(), err.Error())
-				return
-			}
-			for iter := range keys {
-				en, err := h.kvr.LocateKey(keys[iter])
-				if err != nil {
-					log.Printf("failed to locate key(%s): %s", keys[iter], err.Error())
-					continue
-				}
-				if en.ID() != n.ID() {
-					res[en] = append(res[en], keys[iter])
-				}
-			}
-			n.Move(res)
-		}(n, &wg)
-	}
-	wg.Wait()
-	return nil
-}
+//func (h *Host) redistributeKeys() error {
+//	var wg sync.WaitGroup
+//	ns, err := h.kvr.GetNodes()
+//	if err != nil {
+//		return err
+//	}
+//	for _, n := range ns {
+//		go func(n nodes.Node, wg *sync.WaitGroup) {
+//			res := make(map[nodes.Node][]string)
+//			keys, err := n.Explore()
+//			if err != nil {
+//				log.Printf("failed to explore node(%s): %s", n.ID(), err.Error())
+//				return
+//			}
+//			for iter := range keys {
+//				en, err := h.kvr.LocateKey(keys[iter])
+//				if err != nil {
+//					log.Printf("failed to locate key(%s): %s", keys[iter], err.Error())
+//					continue
+//				}
+//				if en.ID() != n.ID() {
+//					res[en] = append(res[en], keys[iter])
+//				}
+//			}
+//			n.Move(res)
+//		}(n, &wg)
+//	}
+//	wg.Wait()
+//	return nil
+//}
