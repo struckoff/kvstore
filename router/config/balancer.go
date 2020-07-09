@@ -24,6 +24,7 @@ type BalancerConfig struct {
 	// Possible: kv, geo
 	DataMode DataModeType `envconfig:"DATA_MODE"`
 	Latency  Duration     `envconfig:"HTTP_LATENCY"`
+	State    bool         `envconfig:"STATE"`
 }
 
 //func (bc *BalancerConfig) MarshalJSON() ([]byte, error) {

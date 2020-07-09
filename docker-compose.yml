@@ -18,13 +18,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-90
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=150ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-0/:/data/
+      - /var/lib/kvstore/data-4c75/node-0/:/data/
     restart: always
   kvstore-node-1:
     ports:
@@ -43,13 +43,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-70
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=200ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-1/:/data/
+      - /var/lib/kvstore/data-4c75/node-1/:/data/
     restart: always
   kvstore-node-2:
     ports:
@@ -68,13 +68,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-60
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=250ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-2/:/data/
+      - /var/lib/kvstore/data-4c75/node-2/:/data/
     restart: always
   kvstore-node-3:
     ports:
@@ -93,13 +93,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-50
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=300ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-3/:/data/
+      - /var/lib/kvstore/data-4c75/node-3/:/data/
     restart: always
   kvstore-node-4:
     ports:
@@ -118,13 +118,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-30
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=350ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-4/:/data/
+      - /var/lib/kvstore/data-4c75/node-4/:/data/
     restart: always
   kvstore-node-5:
     ports:
@@ -143,13 +143,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-20
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=400ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-5/:/data/
+      - /var/lib/kvstore/data-4c75/node-5/:/data/
     restart: always
   kvstore-node-6:
     ports:
@@ -168,13 +168,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-10
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=450ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-6/:/data/
+      - /var/lib/kvstore/data-4c75/node-6/:/data/
     restart: always
   kvstore-node-7:
     ports:
@@ -193,13 +193,13 @@ services:
       - KVSTORE_GEO_LATITUDE=-10
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=500ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-7/:/data/
+      - /var/lib/kvstore/data-4c75/node-7/:/data/
     restart: always
   kvstore-node-8:
     ports:
@@ -218,13 +218,13 @@ services:
       - KVSTORE_GEO_LATITUDE=1
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=550ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-8/:/data/
+      - /var/lib/kvstore/data-4c75/node-8/:/data/
     restart: always
   kvstore-node-9:
     ports:
@@ -243,13 +243,13 @@ services:
       - KVSTORE_GEO_LATITUDE=10
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=600ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-9/:/data/
+      - /var/lib/kvstore/data-4c75/node-9/:/data/
     restart: always
   kvstore-node-10:
     ports:
@@ -268,13 +268,13 @@ services:
       - KVSTORE_GEO_LATITUDE=90
 #      - KVSTORE_BALANCER_MODE=consistent
 #      - KVSTORE_BALANCER_NODE_HASH=xxhash
-      - KVSTORE_BALANCER_SFC_CURVE=hilbert
+      - KVSTORE_BALANCER_SFC_CURVE=morton
       - KVSTORE_BALANCER_MODE=sfc
       - KVSTORE_BALANCER_NODE_HASH=geosfc
       # - KVSTORE_RPC_LATENCY=650ms
       # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
     volumes:
-      - /var/lib/kvstore/data/node-10/:/data/
+      - /var/lib/kvstore/data-4c75/node-10/:/data/
     restart: always
   consul-server:
     image: 'consul:1.6'

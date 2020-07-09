@@ -16,6 +16,7 @@ type SFC struct {
 
 func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 	var tf balancer.TransformFunc
+	var of balancer.OptimizerFunc
 	switch conf.DataMode {
 	case config.GeoData:
 		tf = transform.SpaceTransform
@@ -24,12 +25,17 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 	default:
 		return nil, errors.New("wrong data mode")
 	}
+	if conf.State {
+		of = optimizer.PowerRangeOptimizer
+	} else {
+		of = optimizer.RangeOptimizer
+	}
 	bal, err := balancer.NewBalancer(
 		conf.SFC.Curve.CurveType,
 		conf.SFC.Dimensions,
 		conf.SFC.Size,
 		tf,
-		optimizer.RangeOptimizer,
+		of,
 		nil)
 	if err != nil {
 		return nil, err

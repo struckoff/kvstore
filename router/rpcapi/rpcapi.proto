@@ -32,9 +32,9 @@ message NodeMeta {
 	string Address = 2;
 	string RPCAddress = 3;
 	double Power = 4;
-	double Capacity = 5;
-	HealthCheck Check = 6;
-	GeoData Geo = 7;
+	double Capacity = 6;
+	HealthCheck Check = 7;
+	GeoData Geo = 8;
 }
 
 message HealthCheck {
@@ -55,6 +55,10 @@ message KeyValues {
 	repeated KeyValue KVs = 1;
 }
 
+message Capacity {
+	double Capacity = 1;
+}
+
 service RPCNode {
 	rpc RPCStore (KeyValue) returns (Empty);
 	rpc RPCStorePairs (KeyValues) returns (Empty);
@@ -63,6 +67,11 @@ service RPCNode {
 	rpc RPCExplore (Empty) returns (ExploreRes);
 	rpc RPCMeta (Empty) returns (NodeMeta);
 	rpc RPCMove (MoveReq) returns (Empty);
+//	rpc RPCCapacity (Empty) returns (Capacity);
+}
+
+service RPCCapacity {
+	rpc RPCGet (Empty) returns (Capacity);
 }
 
 service RPCBalancer {

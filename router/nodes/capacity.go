@@ -1,13 +1,22 @@
 package nodes
 
+import (
+	"context"
+	"github.com/struckoff/kvstore/router/rpcapi"
+)
+
 type Capacity struct {
-	c float64
+	rc rpcapi.RPCCapacityClient
 }
 
-func (c Capacity) Get() float64 {
-	return c.c
+func (c *Capacity) Get() (float64, error) {
+	cp, err := c.rc.RPCGet(context.TODO(), &rpcapi.Empty{})
+	if err != nil {
+		return 0, err
+	}
+	return cp.Capacity, nil
 }
 
-func NewCapacity(c float64) Capacity {
-	return Capacity{c}
+func NewCapacity(rc rpcapi.RPCCapacityClient) Capacity {
+	return Capacity{rc: rc}
 }

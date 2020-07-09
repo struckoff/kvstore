@@ -16,7 +16,7 @@ const MaxRecvSendMsgSize = 100 * 1024 * 1024
 
 // NewExternalNode - create a new instance of an external by given meta information.
 func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNode, error) {
-	c, err := enClient(meta.RPCAddress)
+	nodeC, capC, err := enClient(meta.RPCAddress)
 	//conn, err := grpc.Dial(meta.RPCAddress, grpc.WithInsecure()) // TODO Make it secure
 	//if err != nil {
 	//	return nil, err
@@ -29,20 +29,20 @@ func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNo
 			return nil, err
 		}
 	}
-	en := newExternalNode(meta, c, hashsum)
+	en := newExternalNode(meta, nodeC, capC, hashsum)
 	return en, nil
 }
 
 // NewExternalNodeByAddr - create a new instance of an external node.
 // Function asks remote node for it meta information by RPC
 func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNode, error) {
-	c, err := enClient(rpcaddr)
+	nodeC, capC, err := enClient(rpcaddr)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	meta, err := c.RPCMeta(ctx, &rpcapi.Empty{}, grpc.WaitForReady(true))
+	meta, err := nodeC.RPCMeta(ctx, &rpcapi.Empty{}, grpc.WaitForReady(true))
 	if err != nil {
 		return nil, err
 	}
@@ -50,24 +50,24 @@ func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNod
 	if err != nil {
 		return nil, err
 	}
-	en := newExternalNode(meta, c, hashsum)
+	en := newExternalNode(meta, nodeC, capC, hashsum)
 	return en, nil
 }
 
-func newExternalNode(meta *rpcapi.NodeMeta, c rpcapi.RPCNodeClient, h uint64) *RemoteNode {
+func newExternalNode(meta *rpcapi.NodeMeta, nodeC rpcapi.RPCNodeClient, capC rpcapi.RPCCapacityClient, h uint64) *RemoteNode {
 	return &RemoteNode{
 		id:         meta.ID,
 		address:    meta.Address,
 		rpcaddress: meta.RPCAddress,
 		p:          NewPower(meta.Power),
-		c:          NewCapacity(meta.Capacity),
-		rpcclient:  c,
+		c:          NewCapacity(capC),
+		rpcclient:  nodeC,
 		h:          h,
 		geo:        meta.Geo,
 	}
 }
 
-func enClient(addr string) (rpcapi.RPCNodeClient, error) {
+func enClient(addr string) (rpcapi.RPCNodeClient, rpcapi.RPCCapacityClient, error) {
 	// TODO Make it secure
 	conn, err := grpc.Dial(addr, grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(
@@ -76,10 +76,11 @@ func enClient(addr string) (rpcapi.RPCNodeClient, error) {
 		))
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	c := rpcapi.NewRPCNodeClient(conn)
-	return c, nil
+	nodeC := rpcapi.NewRPCNodeClient(conn)
+	capC := rpcapi.NewRPCCapacityClient(conn)
+	return nodeC, capC, nil
 }
 
 // RemoteNode represents compunction API with cluster unit
@@ -111,7 +112,7 @@ func (n *RemoteNode) Power() balancer.Power {
 func (n *RemoteNode) Capacity() balancer.Capacity {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
-	return n.c
+	return &n.c
 }
 
 func (n *RemoteNode) Hash() uint64 {
@@ -180,12 +181,16 @@ func (n *RemoteNode) Remove(key []string) error {
 func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
+	cp, err := n.c.Get()
+	if err != nil {
+		return nil
+	}
 	return &rpcapi.NodeMeta{
 		ID:         n.id,
 		Address:    n.address,
 		RPCAddress: n.rpcaddress,
 		Power:      n.p.Get(),
-		Capacity:   n.p.Get(),
+		Capacity:   cp,
 		Geo:        n.geo,
 	}
 }

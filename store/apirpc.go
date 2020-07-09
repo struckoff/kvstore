@@ -23,6 +23,7 @@ func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	}
 	inn.rpcserver = grpc.NewServer()
 	rpcapi.RegisterRPCNodeServer(inn.rpcserver, inn)
+	rpcapi.RegisterRPCCapacityServer(inn.rpcserver, &inn.c)
 
 	go func(errCh chan<- error) {
 		errCh <- inn.rpcserver.Serve(inbound)

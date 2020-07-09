@@ -27,7 +27,7 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- 
 		address:     conf.Address,
 		rpcaddress:  conf.RPCAddress,
 		p:           nodes.NewPower(conf.Power),
-		c:           nodes.NewCapacity(conf.Capacity),
+		c:           NewCapacity(conf.Capacity),
 		db:          db,
 		kvr:         kvr,
 		geo:         conf.Geo,
@@ -50,6 +50,11 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- 
 		}
 		ln.consul = consul
 	}
+	keys, err := ln.Explore()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to explore local node")
+	}
+	ln.c.Add(-float64(len(keys))) // reduce capacity
 	return ln, nil
 }
 
@@ -61,7 +66,7 @@ type LocalNode struct {
 	rpcaddress  string
 	rpcserver   *grpc.Server
 	p           nodes.Power
-	c           nodes.Capacity
+	c           Capacity
 	db          *bolt.DB
 	kvr         *router.Router
 	consul      *consulapi.Client
@@ -116,7 +121,7 @@ func (inn *LocalNode) Power() balancer.Power {
 func (inn *LocalNode) Capacity() balancer.Capacity {
 	inn.mu.RLock()
 	defer inn.mu.RUnlock()
-	return inn.c
+	return &inn.c
 }
 
 func (inn *LocalNode) Hash() uint64 {
@@ -133,17 +138,23 @@ func (inn *LocalNode) SetHash(h uint64) {
 
 // Store value for a given key in local storage
 func (inn *LocalNode) Store(key string, body []byte) error {
-	return inn.db.Update(func(tx *bolt.Tx) error {
+	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
 			return err
 		}
 		return bc.Put([]byte(key), body)
 	})
+	if err != nil {
+		return err
+	}
+	inn.c.Add(-1) // reduce capacity
+	return nil
 }
 
 // Store KV pairs in local storage
 func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
+	cp := 0.0
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
@@ -153,9 +164,11 @@ func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 			if err := bc.Put([]byte(pairs[iter].Key), []byte(pairs[iter].Value)); err != nil {
 				return errors.Wrap(err, "failed to store pair")
 			}
+			cp++
 		}
 		return nil
 	})
+	inn.c.Add(-cp) // reduce capacity
 	return err
 }
 
@@ -185,6 +198,7 @@ func (inn *LocalNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
 
 // Remove value for a given key
 func (inn *LocalNode) Remove(keys []string) error {
+	cp := 0.0
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
@@ -194,9 +208,12 @@ func (inn *LocalNode) Remove(keys []string) error {
 			if err := bc.Delete([]byte(keys[iter])); err != nil {
 				return err
 			}
+			cp++
 		}
 		return nil
 	})
+	inn.c.Add(cp) // increase capacity
+
 	if err != nil {
 		return errors.Wrap(err, "failed to remove key")
 	}
@@ -271,12 +288,16 @@ func (inn *LocalNode) Meta() *rpcapi.NodeMeta {
 }
 
 func (inn *LocalNode) meta() *rpcapi.NodeMeta {
+	cp, err := inn.c.Get()
+	if err != nil {
+		return nil
+	}
 	return &rpcapi.NodeMeta{
 		ID:         inn.ID(),
 		Address:    inn.HTTPAddress(),
 		RPCAddress: inn.RPCAddress(),
 		Power:      inn.Power().Get(),
-		Capacity:   inn.Capacity().Get(),
+		Capacity:   cp,
 		Geo:        inn.geo,
 	}
 }

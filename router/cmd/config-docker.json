@@ -2,6 +2,7 @@
   "Address": "0.0.0.0:9190",
   "RPCAddress": "127.0.0.1:9290",
   "Balancer":{
+    "State": true,
     "Mode": "SFC",
     "DataMode": "geo",
     "SFC": {
