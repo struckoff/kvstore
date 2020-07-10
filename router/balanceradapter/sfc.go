@@ -4,10 +4,11 @@ import (
 	"github.com/pkg/errors"
 	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/SFCFramework/curve"
-	"github.com/struckoff/SFCFramework/optimizer"
+	balanceroptimizer "github.com/struckoff/SFCFramework/optimizer"
 	"github.com/struckoff/SFCFramework/transform"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
+	"github.com/struckoff/kvstore/router/optimizer"
 )
 
 type SFC struct {
@@ -26,9 +27,9 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 		return nil, errors.New("wrong data mode")
 	}
 	if conf.State {
-		of = optimizer.PowerRangeOptimizer
+		of = optimizer.StaticCapacityStateful
 	} else {
-		of = optimizer.RangeOptimizer
+		of = balanceroptimizer.RangeOptimizer
 	}
 	bal, err := balancer.NewBalancer(
 		conf.SFC.Curve.CurveType,

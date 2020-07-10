@@ -84,6 +84,16 @@ func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Em
 	if err := h.kvr.AddNode(en); err != nil {
 		return nil, err
 	}
+	keys, err := en.Explore()
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range keys {
+		_, err := h.kvr.LocateKey(key)
+		if err != nil {
+			return nil, err
+		}
+	}
 	log.Printf("node(%s) registered", en.ID())
 	if err := h.kvr.redistributeKeys(); err != nil {
 		return nil, err

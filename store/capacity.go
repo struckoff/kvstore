@@ -22,9 +22,9 @@ func (c *Capacity) Get() (float64, error) {
 }
 
 func (c *Capacity) Add(arg float64) {
-	c.l.Lock()
-	c.c += arg
-	c.l.Unlock()
+	//c.l.Lock()
+	//c.c += arg
+	//c.l.Unlock()
 }
 
 func (c *Capacity) RPCGet(ctx context.Context, in *rpcapi.Empty) (*rpcapi.Capacity, error) {
