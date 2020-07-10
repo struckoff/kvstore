@@ -1,0 +1,47 @@
+[
+	{
+		"key": "kvstore/balancermode",
+		"flags": 0,
+		"value": "c2Zj"
+	},
+	{
+		"key": "kvstore/datamode",
+		"flags": 0,
+		"value": "Z2Vv"
+	},
+	{
+		"key": "kvstore/nodehasher",
+		"flags": 0,
+		"value": "Z2Vvc2Zj"
+	},
+	{
+		"key": "kvstore/ring.PartitionCount",
+		"flags": 0,
+		"value": "Nw=="
+	},
+	{
+		"key": "kvstore/ring.load",
+		"flags": 0,
+		"value": "MS4yNQ=="
+	},
+	{
+		"key": "kvstore/ring.replicationFactor",
+		"flags": 0,
+		"value": "MQ=="
+	},
+	{
+		"key": "kvstore/sfc.curve",
+		"flags": 0,
+		"value": "TW9ydG9u"
+	},
+	{
+		"key": "kvstore/sfc.dimensions",
+		"flags": 0,
+		"value": "Mg=="
+	},
+	{
+		"key": "kvstore/sfc.size",
+		"flags": 0,
+		"value": "NjQ="
+	}
+]

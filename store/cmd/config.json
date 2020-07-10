@@ -1,0 +1,34 @@
+{
+  "Name": "node-0",
+  "Mode": "consul",
+  "Address": "0.0.0.0:9191",
+  "RPCAddress": "127.0.0.1:9291",
+  "Power": 1,
+  "Capacity": 1,
+  "Balancer":{
+    "Mode": "SFC",
+    "DataMode": "geo",
+    "SFC": {
+      "Dimensions":2,
+      "Size":64,
+      "Curve": "morton"
+    },
+    "NodeHash": "geosfc"
+  },
+  "Health": {
+    "CheckInterval": "10s",
+    "CheckTimeout": "10s",
+    "DeregisterCriticalServiceAfter": "10s"
+  },
+"Geo":{
+  "Latitude":0.0,
+  "Longitude":0.0
+},
+  "KVRouter": {
+    "Address": "127.0.0.1:9290"
+  },
+  "Consul": {
+    "Service": "kvstore",
+    "Address": "127.0.0.1:8501"
+  }
+}

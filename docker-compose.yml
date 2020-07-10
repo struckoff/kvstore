@@ -1,0 +1,345 @@
+version: "3"
+services:
+  kvstore-node-0:
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    ports:
+      - '9190:9190'
+      - '9290:9290'
+      - '40000:40000'
+    environment:
+      - KVSTORE_NAME=node-0
+      - KVSTORE_ADDRESS=kvstore-node-0:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-0:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-0:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-180
+      - KVSTORE_GEO_LATITUDE=-90
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=150ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-0/:/data/
+    restart: always
+  kvstore-node-1:
+    ports:
+      - '9191:9190'
+      - '9291:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-1
+      - KVSTORE_ADDRESS=kvstore-node-1:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-1:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-1:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-160
+      - KVSTORE_GEO_LATITUDE=-70
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=200ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-1/:/data/
+    restart: always
+  kvstore-node-2:
+    ports:
+      - '9192:9190'
+      - '9292:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-2
+      - KVSTORE_ADDRESS=kvstore-node-2:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-2:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-2:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-150
+      - KVSTORE_GEO_LATITUDE=-60
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=250ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-2/:/data/
+    restart: always
+  kvstore-node-3:
+    ports:
+      - '9193:9190'
+      - '9293:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-3
+      - KVSTORE_ADDRESS=kvstore-node-3:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-3:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-3:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-140
+      - KVSTORE_GEO_LATITUDE=-50
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=300ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-3/:/data/
+    restart: always
+  kvstore-node-4:
+    ports:
+      - '9194:9190'
+      - '9294:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-4
+      - KVSTORE_ADDRESS=kvstore-node-4:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-4:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-4:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-120
+      - KVSTORE_GEO_LATITUDE=-30
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=350ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-4/:/data/
+    restart: always
+  kvstore-node-5:
+    ports:
+      - '9195:9190'
+      - '9295:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-5
+      - KVSTORE_ADDRESS=kvstore-node-5:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-5:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-5:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-110
+      - KVSTORE_GEO_LATITUDE=-20
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=400ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-5/:/data/
+    restart: always
+  kvstore-node-6:
+    ports:
+      - '9196:9190'
+      - '9296:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-6
+      - KVSTORE_ADDRESS=kvstore-node-6:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-6:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-6:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-100
+      - KVSTORE_GEO_LATITUDE=-10
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=450ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-6/:/data/
+    restart: always
+  kvstore-node-7:
+    ports:
+      - '9197:9190'
+      - '9297:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-7
+      - KVSTORE_ADDRESS=kvstore-node-7:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-7:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-7:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-90
+      - KVSTORE_GEO_LATITUDE=-10
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=500ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-7/:/data/
+    restart: always
+  kvstore-node-8:
+    ports:
+      - '9198:9190'
+      - '9298:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-8
+      - KVSTORE_ADDRESS=kvstore-node-8:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-8:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-8:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-80
+      - KVSTORE_GEO_LATITUDE=1
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=550ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-8/:/data/
+    restart: always
+  kvstore-node-9:
+    ports:
+      - '9199:9190'
+      - '9299:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-9
+      - KVSTORE_ADDRESS=kvstore-node-9:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-9:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-9:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=-70
+      - KVSTORE_GEO_LATITUDE=10
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=600ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-9/:/data/
+    restart: always
+  kvstore-node-10:
+    ports:
+      - '9200:9190'
+      - '9300:9290'
+    build:
+      context: .
+      dockerfile: store/build.Dockerfile
+    environment:
+      - KVSTORE_NAME=node-10
+      - KVSTORE_ADDRESS=kvstore-node-10:9190
+      - KVSTORE_RPC_ADDRESS=kvstore-node-10:9290
+      - KVSTORE_CONSUL_ADDRESS=consul-node-10:8500
+      - KVSTORE_INFLUX_ADDRESS=http://172.18.0.1:8086
+      - KVSTORE_GEO_LONGITUDE=180
+      - KVSTORE_GEO_LATITUDE=90
+#      - KVSTORE_BALANCER_MODE=consistent
+#      - KVSTORE_BALANCER_NODE_HASH=xxhash
+      - KVSTORE_BALANCER_SFC_CURVE=morton
+      - KVSTORE_BALANCER_MODE=sfc
+      - KVSTORE_BALANCER_NODE_HASH=geosfc
+      # - KVSTORE_RPC_LATENCY=650ms
+      # - KVSTORE_BALANCER_HTTP_LATENCY=100ms
+    volumes:
+      - /var/lib/kvstore/data-4c75/node-10/:/data/
+    restart: always
+  consul-server:
+    image: 'consul:1.6'
+    ports:
+      - '8500:8500'
+      - '8400:8400'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -server -bootstrap-expect=1 -ui -client 0.0.0.0 -ui -node=consul-server
+
+  consul-node-0:
+    image: 'consul:1.6'
+    ports:
+      - '18500:8500'
+      - '18400:8400'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-0
+  consul-node-1:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-1
+  consul-node-2:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-2
+  consul-node-3:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-3
+  consul-node-4:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-4
+  consul-node-5:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-5
+  consul-node-6:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-6
+  consul-node-7:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-7
+  consul-node-8:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-8
+  consul-node-9:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-9
+  consul-node-10:
+    image: 'consul:1.6'
+    environment:
+      - 'CONSUL_LOCAL_CONFIG={"skip_leave_on_interrupt": true}'
+    command: agent -retry-join consul-server -client 0.0.0.0 -node node-10
