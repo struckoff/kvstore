@@ -96,6 +96,10 @@ func (h *Router) Store(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if _, err := h.AddData(key); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 //Receive value for a given key from the remote node

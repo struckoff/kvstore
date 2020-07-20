@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/pkg/errors"
 	"github.com/struckoff/SFCFramework/curve"
 	"github.com/struckoff/kvstore/router"
@@ -45,8 +46,8 @@ func run() (err error) {
 	defer db.Close()
 
 	//Run metrics client
-	metrics := make(chan *influxdb2.Point, 100)
-	go func(points <-chan *influxdb2.Point) {
+	metrics := make(chan *write.Point, 100)
+	go func(points <-chan *write.Point) {
 		client := influxdb2.NewClientWithOptions(
 			conf.InfluxAddress,
 			"",

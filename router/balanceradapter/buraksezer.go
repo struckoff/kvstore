@@ -63,6 +63,10 @@ func (c BuraksezerRing) LocateData(di balancer.DataItem) (nodes.Node, error) {
 	return nil, errors.New("wrong node type")
 }
 
+func (c BuraksezerRing) AddData(di balancer.DataItem) (nodes.Node, error) {
+	return c.LocateData(di)
+}
+
 func (c BuraksezerRing) Nodes() ([]nodes.Node, error) {
 	var ok bool
 	ms := c.ring.GetMembers()

@@ -1,7 +1,7 @@
 package store
 
 import (
-	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net/http"
@@ -20,7 +20,7 @@ import (
 var mainBucket = []byte("pairs")
 
 // Return new instance LocalNode.
-func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- *influxdb2.Point) (*LocalNode, error) {
+func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- *write.Point) (*LocalNode, error) {
 	lwID := int64(0)
 	ln := &LocalNode{
 		id:          *conf.Name,
@@ -76,7 +76,7 @@ type LocalNode struct {
 	rpclatency  time.Duration
 	httplatency time.Duration
 	lwID        *int64
-	metrics     chan<- *influxdb2.Point
+	metrics     chan<- *write.Point
 }
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {

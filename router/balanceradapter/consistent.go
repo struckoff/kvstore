@@ -57,6 +57,10 @@ func (c *Consistent) LocateData(di balancer.DataItem) (nodes.Node, error) {
 	return n, nil
 }
 
+func (c *Consistent) AddData(di balancer.DataItem) (nodes.Node, error) {
+	return c.LocateData(di)
+}
+
 func (c *Consistent) Nodes() ([]nodes.Node, error) {
 	names := c.ring.Hosts()
 	ns := make([]nodes.Node, len(names))

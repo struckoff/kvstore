@@ -57,6 +57,23 @@ func (h *Router) LocateKey(key string) (nodes.Node, error) {
 	return n, nil
 }
 
+func (h *Router) AddData(key string) (nodes.Node, error) {
+	//di := DataItem(key)
+	di, err := h.ndf(key)
+	if err != nil {
+		return nil, err
+	}
+	nb, err := h.bal.AddData(di)
+	if err != nil {
+		return nil, err
+	}
+	n, ok := nb.(nodes.Node)
+	if !ok {
+		return nil, errors.New("wrong node type")
+	}
+	return n, nil
+}
+
 // GetNodes - returns a list of nodes in the balancer
 func (h *Router) GetNodes() ([]nodes.Node, error) {
 	return h.bal.Nodes()

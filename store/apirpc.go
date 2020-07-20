@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/influxdata/influxdb-client-go"
 	"github.com/struckoff/kvstore/router/nodes"
 	"log"
 	"net"

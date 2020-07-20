@@ -77,6 +77,18 @@ func (sb *SFC) LocateData(di balancer.DataItem) (nodes.Node, error) {
 	return n, nil
 }
 
+func (sb *SFC) AddData(di balancer.DataItem) (nodes.Node, error) {
+	nb, err := sb.bal.AddData(di)
+	if err != nil {
+		return nil, err
+	}
+	n, ok := nb.(nodes.Node)
+	if !ok {
+		return nil, errors.New("wrong node type")
+	}
+	return n, nil
+}
+
 func (sb *SFC) Nodes() ([]nodes.Node, error) {
 	nbs := sb.bal.Nodes()
 	ns := make([]nodes.Node, len(nbs))
