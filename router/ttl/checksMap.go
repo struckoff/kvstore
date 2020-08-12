@@ -1,6 +1,8 @@
 package ttl
 
-import "sync"
+import (
+	"sync"
+)
 
 type ChecksMap struct {
 	mu sync.RWMutex
@@ -9,6 +11,14 @@ type ChecksMap struct {
 
 func (cm *ChecksMap) Store(name string, check *Check) {
 	cm.mu.Lock()
+	if _, ok := cm.st[name]; ok {
+		if cm.st[name].timerDead != nil {
+			cm.st[name].timerDead.Stop()
+		}
+		if cm.st[name].timerRemove != nil {
+			cm.st[name].timerRemove.Stop()
+		}
+	}
 	cm.st[name] = check
 	cm.mu.Unlock()
 }
@@ -27,8 +37,8 @@ func (cm *ChecksMap) Delete(name string) {
 }
 
 func (cm *ChecksMap) Update(name string) bool {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 	if _, ok := cm.st[name]; ok {
 		cm.st[name].Update()
 		return true

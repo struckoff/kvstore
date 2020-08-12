@@ -8,9 +8,11 @@ import (
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 func main() {
@@ -70,7 +72,11 @@ func RunRPCServer(h rpcapi.RPCBalancerServer, conf *config.Config) error {
 	if err != nil {
 		return err
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute,
+		}),
+	)
 	rpcapi.RegisterRPCBalancerServer(s, h)
 
 	log.Printf("RUN RPC Server [%s]", conf.RPCAddress)

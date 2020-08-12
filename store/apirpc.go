@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/influxdata/influxdb-client-go"
 	"github.com/struckoff/kvstore/router/nodes"
+	"google.golang.org/grpc/keepalive"
 	"log"
 	"net"
 	"time"
@@ -21,7 +22,11 @@ func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	if err != nil {
 		return err
 	}
-	inn.rpcserver = grpc.NewServer()
+	inn.rpcserver = grpc.NewServer(
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute,
+		}),
+	)
 	rpcapi.RegisterRPCNodeServer(inn.rpcserver, inn)
 	rpcapi.RegisterRPCCapacityServer(inn.rpcserver, &inn.c)
 
@@ -195,22 +200,22 @@ func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.No
 }
 
 func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
-	start := time.Now()
-	defer func() {
-		end := time.Since(start)
-		now := time.Now()
-
-		p := influxdb2.NewPoint("grpc",
-			map[string]string{
-				"id":     inn.id,
-				"method": "move",
-			},
-			map[string]interface{}{
-				"duration_ms": end.Milliseconds(),
-			},
-			now)
-		inn.metrics <- p
-	}()
+	//start := time.Now()
+	//defer func() {
+	//	end := time.Since(start)
+	//	now := time.Now()
+	//
+	//	p := influxdb2.NewPoint("grpc",
+	//		map[string]string{
+	//			"id":     inn.id,
+	//			"method": "move",
+	//		},
+	//		map[string]interface{}{
+	//			"duration_ms": end.Milliseconds(),
+	//		},
+	//		now)
+	//	inn.metrics <- p
+	//}()
 
 	time.Sleep(inn.rpclatency)
 

@@ -41,24 +41,28 @@ func (c *Consistent) SetNodes(ns []nodes.Node) error {
 	return nil
 }
 
-func (c *Consistent) LocateData(di balancer.DataItem) (nodes.Node, error) {
+func (c *Consistent) LocateData(di balancer.DataItem) (nodes.Node, uint64, error) {
 	name, err := c.ring.GetLeast(di.ID())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	ni, ok := c.nodes.Load(name)
 	if !ok {
-		return nil, errors.New("node not found")
+		return nil, 0, errors.New("node not found")
 	}
 	n, ok := ni.(nodes.Node)
 	if !ok {
-		return nil, errors.New("wrong node type")
+		return nil, 0, errors.New("wrong node type")
 	}
-	return n, nil
+	return n, 0, nil
 }
 
-func (c *Consistent) AddData(di balancer.DataItem) (nodes.Node, error) {
+func (c *Consistent) AddData(di balancer.DataItem) (nodes.Node, uint64, error) {
 	return c.LocateData(di)
+}
+
+func (c *Consistent) RemoveData(di balancer.DataItem) error {
+	return nil
 }
 
 func (c *Consistent) Nodes() ([]nodes.Node, error) {
@@ -91,5 +95,9 @@ func (c *Consistent) GetNode(id string) (nodes.Node, error) {
 }
 
 func (c *Consistent) Optimize() error {
+	return nil
+}
+
+func (c *Consistent) Reset() error {
 	return nil
 }

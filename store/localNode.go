@@ -155,9 +155,10 @@ func (inn *LocalNode) Store(key string, body []byte) error {
 // Store KV pairs in local storage
 func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 	cp := 0.0
-	err := inn.db.Update(func(tx *bolt.Tx) error {
+	err := inn.db.Batch(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
+			log.Println(err)
 			return err
 		}
 		for iter := range pairs {
@@ -230,20 +231,28 @@ func (inn *LocalNode) Move(nk map[nodes.Node][]string) error {
 		wg.Add(1)
 		go func(en nodes.Node, keys []string, wg *sync.WaitGroup) {
 			defer wg.Done()
-			err := inn.db.Update(func(tx *bolt.Tx) error {
+			pairs := make([]*rpcapi.KeyValue, len(keys))
+			err := inn.db.View(func(tx *bolt.Tx) error {
 				bc := tx.Bucket(mainBucket)
 				if bc == nil {
 					return nil
 				}
-				pairs := make([]*rpcapi.KeyValue, len(keys))
 				for iter := range keys {
 					body := bc.Get([]byte(keys[iter]))
 					pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: string(body)}
 				}
-				if err := en.StorePairs(pairs); err != nil {
-					return errors.Wrap(err, "failed to move keys and values to another node")
-				}
-
+				return nil
+			})
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if err := en.StorePairs(pairs); err != nil {
+				log.Println(errors.Wrap(err, "failed to move keys and values to another node"))
+				return
+			}
+			err = inn.db.Batch(func(tx *bolt.Tx) error {
+				bc := tx.Bucket(mainBucket)
 				for iter := range keys {
 					if err := bc.Delete([]byte(keys[iter])); err != nil {
 						return errors.Wrap(err, "failed to delete keys")

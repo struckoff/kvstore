@@ -19,6 +19,15 @@ func (sm *SyncMap) Put(key string, value []string) {
 	sm.mu.Unlock()
 }
 
+func (sm *SyncMap) Append(key string, value string) {
+	sm.mu.Lock()
+	if _, ok := sm.s[key]; !ok {
+		sm.s[key] = make([]string, 0)
+	}
+	sm.s[key] = append(sm.s[key], value)
+	sm.mu.Unlock()
+}
+
 func (sm *SyncMap) Get(key string) ([]string, bool) {
 	sm.mu.RLock()
 	v, ok := sm.s[key]
