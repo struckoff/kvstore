@@ -225,6 +225,10 @@ github.com/struckoff/SFCFramework v0.0.0-20200811124150-27afcd4368f2 h1:9xk5GwC5
 github.com/struckoff/SFCFramework v0.0.0-20200811124150-27afcd4368f2/go.mod h1:wjO5rO0PxlQega59hZ9zoFwW/1gVkIS2lAZIqI2GrM8=
 github.com/struckoff/SFCFramework v0.0.0-20200811232013-93d2eb2c5003 h1:ultTIq9IQlXq9xrgusxWnUtTs4xv1eGmM+1NoIlBdXo=
 github.com/struckoff/SFCFramework v0.0.0-20200811232013-93d2eb2c5003/go.mod h1:wjO5rO0PxlQega59hZ9zoFwW/1gVkIS2lAZIqI2GrM8=
+github.com/struckoff/SFCFramework v0.0.0-20200818195459-10194bcbff89 h1:M/71MlvxCtYxtsq1qsHWWFTRXKmFCKWmFbqVfrKZf0s=
+github.com/struckoff/SFCFramework v0.0.0-20200818195459-10194bcbff89/go.mod h1:wjO5rO0PxlQega59hZ9zoFwW/1gVkIS2lAZIqI2GrM8=
+github.com/struckoff/SFCFramework v0.0.0-20200818195926-6f7e5807b8d4 h1:7+SYePbfzU5mc3pq8OX2dvuhYpb2qNhcSSQeSdghH4g=
+github.com/struckoff/SFCFramework v0.0.0-20200818195926-6f7e5807b8d4/go.mod h1:wjO5rO0PxlQega59hZ9zoFwW/1gVkIS2lAZIqI2GrM8=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=

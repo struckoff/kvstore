@@ -2,7 +2,8 @@ package nodes
 
 import (
 	"context"
-	balancer "github.com/struckoff/SFCFramework"
+	balancercapacity "github.com/struckoff/SFCFramework/capacity"
+	balancerpower "github.com/struckoff/SFCFramework/power"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	"google.golang.org/grpc"
@@ -104,12 +105,12 @@ func (n *RemoteNode) ID() string {
 	return n.id
 }
 
-func (n *RemoteNode) Power() balancer.Power {
+func (n *RemoteNode) Power() balancerpower.Power {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.p
 }
-func (n *RemoteNode) Capacity() balancer.Capacity {
+func (n *RemoteNode) Capacity() balancercapacity.Capacity {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return &n.c

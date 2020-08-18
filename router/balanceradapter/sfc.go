@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/SFCFramework/curve"
+	balancernode "github.com/struckoff/SFCFramework/node"
 	balancertransform "github.com/struckoff/SFCFramework/transform"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
@@ -137,7 +138,7 @@ func (sb *SFC) RemoveData(di balancer.DataItem) error {
 	return sb.bal.RemoveData(di)
 }
 
-func (sb *SFC) checkNodeCapacity(n balancer.Node, di balancer.DataItem) (bool, error) {
+func (sb *SFC) checkNodeCapacity(n balancernode.Node, di balancer.DataItem) (bool, error) {
 	cgs := sb.bal.Space().CellGroups()
 	c, err := n.Capacity().Get()
 	if err != nil {

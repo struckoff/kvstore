@@ -1,12 +1,12 @@
 package nodes
 
 import (
-	balancer "github.com/struckoff/SFCFramework"
+	balancernode "github.com/struckoff/SFCFramework/node"
 	"github.com/struckoff/kvstore/router/rpcapi"
 )
 
 type Node interface {
-	balancer.Node
+	balancernode.Node
 	Store(string, []byte) error                  // Save value for a given key
 	StorePairs([]*rpcapi.KeyValue) error         // Save multiple key-value pairs
 	Receive([]string) (*rpcapi.KeyValues, error) // Return value for a given key

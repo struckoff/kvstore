@@ -303,13 +303,13 @@ func powerRangeOptimizer(s *balancer.Space) (res []*balancer.CellGroup, err erro
 		if err := cgs[iter].SetRange(min, max, nil); err != nil {
 			return nil, errors.Wrap(err, "range power optimizer error")
 		}
-		fillCellGroup(cgs[iter], s)
+		s.FillCellGroup(cgs[iter])
 	}
 	if max < s.Capacity() {
 		if err := cgs[len(cgs)-1].SetRange(min, s.Capacity()+1, nil); err != nil {
 			return nil, errors.Wrap(err, "range power optimizer error")
 		}
-		fillCellGroup(cgs[len(cgs)-1], s)
+		s.FillCellGroup(cgs[len(cgs)-1])
 	}
 	return cgs, nil
 }
@@ -329,11 +329,11 @@ func equalizer(lcg, rcg *balancer.CellGroup, s *balancer.Space) error {
 		if err := lcg.SetRange(lcg.Range().Min, lcg.Range().Max-1, nil); err != nil {
 			return err
 		}
-		fillCellGroup(lcg, s)
+		s.FillCellGroup(lcg)
 		if err := rcg.SetRange(rcg.Range().Min-1, rcg.Range().Max, nil); err != nil {
 			return err
 		}
-		fillCellGroup(rcg, s)
+		s.FillCellGroup(rcg)
 	}
 	if nbf {
 		rc, err := rcg.Node().Capacity().Get()
@@ -345,22 +345,12 @@ func equalizer(lcg, rcg *balancer.CellGroup, s *balancer.Space) error {
 			if err := lcg.SetRange(lcg.Range().Min, lcg.Range().Max+1, nil); err != nil {
 				return err
 			}
-			fillCellGroup(lcg, s)
+			s.FillCellGroup(lcg)
 			if err := rcg.SetRange(rcg.Range().Min+1, rcg.Range().Max, nil); err != nil {
 				return err
 			}
-			fillCellGroup(rcg, s)
+			s.FillCellGroup(rcg)
 		}
 	}
 	return nil
-}
-
-func fillCellGroup(cg *balancer.CellGroup, s *balancer.Space) {
-	cg.SetCells(nil)
-	for _, cl := range s.Cells() {
-		if cg.FitsRange(cl.ID()) {
-			cl.SetGroup(nil)
-			cg.AddCell(cl, true)
-		}
-	}
 }
