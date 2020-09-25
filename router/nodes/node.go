@@ -1,8 +1,8 @@
 package nodes
 
 import (
-	balancernode "github.com/struckoff/SFCFramework/node"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	balancernode "github.com/struckoff/sfcframework/node"
 )
 
 type Node interface {

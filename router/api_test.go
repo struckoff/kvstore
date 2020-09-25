@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	balancer "github.com/struckoff/SFCFramework"
-	balancermocs "github.com/struckoff/SFCFramework/mocks"
-	"github.com/struckoff/kvstore/router/mocks"
+	"github.com/struckoff/kvstore/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	balancer "github.com/struckoff/sfcframework"
+	balancermocks "github.com/struckoff/sfcframework/mocks"
 	"io"
 	"io/ioutil"
 	"log"
@@ -29,7 +29,6 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 		body   io.Reader
 	}
 	type fields struct {
-		//bal balanceradapter.Balancer
 		nodes map[string][]string
 	}
 	tests := []struct {
@@ -38,43 +37,6 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 		fields fields
 		want   *httptest.ResponseRecorder
 	}{
-		//{
-		//	name: "GET /nodes",
-		//	args: args{
-		//		method: "GET",
-		//		path:   "/nodes",
-		//		body:   nil,
-		//	},
-		//	fields: fields{
-		//		nodes: map[string][]string{
-		//			"test-node-0": nil,
-		//			"test-node-1": nil,
-		//			"test-node-2": nil,
-		//		},
-		//	},
-		//	want: &httptest.ResponseRecorder{
-		//		Code: 200,
-		//		Body: bytes.NewBuffer([]byte("[{\"ID\":\"test-node-0\"},{\"ID\":\"test-node-1\"},{\"ID\":\"test-node-2\"}]\n")),
-		//	},
-		//},
-		//{
-		//	name: "GET /list",
-		//	args: args{
-		//		method: "GET",
-		//		path:   "/list",
-		//		body:   nil,
-		//	},
-		//	fields: fields{
-		//		nodes: map[string][]string{
-		//			"test-node-0": {"test-node-0-key-0", "test-node-0-key-1", "test-node-0-key-2"},
-		//			"test-node-1": {"test-node-1-key-0", "test-node-1-key-1", "test-node-1-key-2"},
-		//		},
-		//	},
-		//	want: &httptest.ResponseRecorder{
-		//		Code: 200,
-		//		Body: bytes.NewBuffer([]byte("{\"test-node-0\":[\"test-node-0-key-0\",\"test-node-0-key-1\",\"test-node-0-key-2\"],\"test-node-1\":[\"test-node-1-key-0\",\"test-node-1-key-1\",\"test-node-1-key-2\"]}")),
-		//	},
-		//},
 		{
 			name: "GET /get",
 			args: args{
@@ -93,18 +55,6 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 				Body: bytes.NewBuffer([]byte("[{\"Key\":\"test-node-1-key-1\",\"Value\":\"test-node-1\",\"Found\":true}]\n")),
 			},
 		},
-		//{
-		//	name: "POST /put/test-key-3",
-		//	args: args{
-		//		method: "POST",
-		//		body:   bytes.NewBuffer([]byte("test-key-3-val")),
-		//		path:   "/put/test-key-3",
-		//	},
-		//	want: &httptest.ResponseRecorder{
-		//		Code: 200,
-		//		Body: bytes.NewBuffer([]byte("OK")),
-		//	},
-		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -132,7 +82,7 @@ func TestRouter_HTTPHandler_GET(t *testing.T) {
 			h := &Router{
 				bal: mbal,
 				ndf: func(s string) (balancer.DataItem, error) {
-					di := &balancermocs.DataItem{}
+					di := &balancermocks.DataItem{}
 					di.On("ID").Return(s)
 					return di, nil
 				},
@@ -156,12 +106,12 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func generateData(n int) [][]byte {
 	res := make([][]byte, n)
-	for iter := range res {
+	for i := range res {
 		b := make([]rune, 256)
 		for i := range b {
 			b[i] = letterRunes[rand.Intn(len(letterRunes))]
 		}
-		res[iter] = []byte(fmt.Sprintf("%d", rand.Int()))
+		res[i] = []byte(fmt.Sprintf("%d", rand.Int()))
 	}
 
 	return res

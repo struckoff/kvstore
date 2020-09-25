@@ -1,8 +1,8 @@
 package optimizer
 
 import (
-	balancer "github.com/struckoff/SFCFramework"
-	balanceroptimizer "github.com/struckoff/SFCFramework/optimizer"
+	balancer "github.com/struckoff/sfcframework"
+	balanceroptimizer "github.com/struckoff/sfcframework/optimizer"
 	"log"
 )
 

@@ -1,6 +1,6 @@
 package dataitem
 
-import balancer "github.com/struckoff/SFCFramework"
+import balancer "github.com/struckoff/sfcframework"
 
 type KVDataItem string
 

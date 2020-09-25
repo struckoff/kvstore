@@ -60,10 +60,10 @@ message Capacity {
 }
 
 service RPCNode {
-	rpc RPCStore (KeyValue) returns (Empty);
-	rpc RPCStorePairs (KeyValues) returns (Empty);
+	rpc RPCStore (KeyValue) returns (DataItem);
+	rpc RPCStorePairs (KeyValues) returns (DataItems);
 	rpc RPCReceive (KeyReq) returns (KeyValues);
-	rpc RPCRemove (KeyReq) returns (Empty);
+	rpc RPCRemove (KeyReq) returns (DataItem);
 	rpc RPCExplore (Empty) returns (ExploreRes);
 	rpc RPCMeta (Empty) returns (NodeMeta);
 	rpc RPCMove (MoveReq) returns (Empty);
@@ -81,4 +81,14 @@ service RPCBalancer {
 
 message Ping {
 	string NodeID = 1;
+}
+
+message DataItems {
+	repeated DataItem DIs = 1;
+}
+
+message DataItem {
+	string ID = 1;
+	uint64 Size = 2;
+	GeoData Geo = 3;
 }

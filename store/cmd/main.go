@@ -5,14 +5,16 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go"
 	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/balanceradapter"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
+	"github.com/struckoff/sfcframework/curve"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 	"log"
 )
 
@@ -57,15 +59,12 @@ func run() (err error) {
 		defer writeApi.Flush()
 		balancermode, err := conf.Balancer.Mode.String()
 		if err != nil {
-			log.Printf("unable to run metrics client: %w", err)
+			logger.Logger().Error("unable to run metrics client", zap.Error(err))
 			return
 		}
 		for p := range points {
 			p.AddTag("balancermode", balancermode)
 			writeApi.WritePoint(p)
-			//if err := ; err != nil {
-			//	log.Println("Metric write error: %s\n", err.Error())
-			//}
 		}
 	}(metrics)
 
@@ -128,12 +127,10 @@ func run() (err error) {
 		return errors.New("wrong node node")
 	}
 
-	//go func(errCh chan error, conf *store.Config) {
 	if err := inn.RunRPCServer(&conf, errCh); err != nil {
 		//errCh <- errors.Wrap(err, "failed to run RPC server")
 		return errors.Wrap(err, "failed to run RPC server")
 	}
-	//}(errCh, &conf)
 
 	//Run discovery connection
 	go func(errCh chan error, inn *store.LocalNode, conf *store.Config) {

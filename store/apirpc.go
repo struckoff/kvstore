@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 	"github.com/influxdata/influxdb-client-go"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/keepalive"
-	"log"
 	"net"
 	"time"
 
@@ -33,25 +34,9 @@ func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	go func(errCh chan<- error) {
 		errCh <- inn.rpcserver.Serve(inbound)
 	}(errCh)
-	//if err := checkTCP(inbound.Addr().String()); err != nil {
-	//	return err
-	//}
-	log.Printf("RPC server listening on %s", inbound.Addr().String())
-
-	//if err := inn.rpcserver.Serve(inbound); err != nil {
-	//	return err
-	//}
-
+	logger.Logger().Info("RPC server listening", zap.String("Address", inbound.Addr().String()))
 	return nil
 }
-
-//func checkTCP(addr string) error {
-//	_, err := net.Dial("tcp", addr)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
 
 func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (r *rpcapi.Empty, err error) {
 	start := time.Now()
@@ -96,7 +81,6 @@ func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (
 		inn.metrics <- p
 	}()
 
-	log.Println("Receive keys")
 	time.Sleep(inn.rpclatency)
 	if err := inn.StorePairs(in.KVs); err != nil {
 		return nil, err

@@ -2,7 +2,7 @@ package dataitem
 
 import (
 	"encoding/json"
-	balancer "github.com/struckoff/SFCFramework"
+	balancer "github.com/struckoff/sfcframework"
 )
 
 // SpaceDataItem represents geospatial key as balancer item

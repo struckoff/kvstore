@@ -2,15 +2,14 @@ package balanceradapter
 
 import (
 	"github.com/pkg/errors"
-	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/SFCFramework/curve"
-	balancernode "github.com/struckoff/SFCFramework/node"
-	balancertransform "github.com/struckoff/SFCFramework/transform"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
 	"github.com/struckoff/kvstore/router/optimizer"
 	"github.com/struckoff/kvstore/router/transform"
-	"log"
+	balancer "github.com/struckoff/sfcframework"
+	"github.com/struckoff/sfcframework/curve"
+	balancernode "github.com/struckoff/sfcframework/node"
+	balancertransform "github.com/struckoff/sfcframework/transform"
 	"math"
 	"sync"
 )
@@ -50,24 +49,15 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 }
 
 func (sb *SFC) AddNode(n nodes.Node) error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
-	//if len(sb.bal.Space().CellGroups()) > 0 {
-	//	return sb.bal.AddNode(n, false)
-	//}
 	return sb.bal.AddNode(n, true)
 
 }
 
 func (sb *SFC) RemoveNode(id string) error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	return sb.bal.RemoveNode(id, true)
 }
 
 func (sb *SFC) SetNodes(ns []nodes.Node) error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	for _, cell := range sb.bal.Space().Cells() {
 		cell.Truncate()
 	}
@@ -84,8 +74,6 @@ func (sb *SFC) SetNodes(ns []nodes.Node) error {
 }
 
 func (sb *SFC) LocateData(di balancer.DataItem) (nodes.Node, uint64, error) {
-	//sb.m.RLock()
-	//defer sb.m.RUnlock()
 	nb, cid, err := sb.bal.LocateData(di)
 	if err != nil {
 		return nil, 0, err
@@ -98,8 +86,6 @@ func (sb *SFC) LocateData(di balancer.DataItem) (nodes.Node, uint64, error) {
 }
 
 func (sb *SFC) AddData(di balancer.DataItem) (nodes.Node, uint64, error) {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	nb, cid, err := sb.bal.LocateData(di)
 	if err != nil {
 		return nil, 0, err
@@ -133,8 +119,6 @@ func (sb *SFC) AddData(di balancer.DataItem) (nodes.Node, uint64, error) {
 }
 
 func (sb *SFC) RemoveData(di balancer.DataItem) error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	return sb.bal.RemoveData(di)
 }
 
@@ -145,11 +129,10 @@ func (sb *SFC) checkNodeCapacity(n balancernode.Node, di balancer.DataItem) (boo
 		return false, err
 	}
 	nf := true
-	for iter := range cgs {
-		if cgs[iter].Node().ID() == n.ID() {
+	for i := range cgs {
+		if cgs[i].Node().ID() == n.ID() {
 			nf = false
-			diff := c - float64(cgs[iter].TotalLoad()) - float64(di.Size())
-			//diff := c - float64(di.Size())
+			diff := c - float64(cgs[i].TotalLoad()) - float64(di.Size())
 			if diff >= 0 {
 				return true, err
 			}
@@ -165,35 +148,32 @@ func (sb *SFC) checkNodeCapacity(n balancernode.Node, di balancer.DataItem) (boo
 func (sb *SFC) findBetterCell(di balancer.DataItem, cid uint64) (uint64, error) {
 	dis := math.MaxInt64
 	ncID := cid
-	//var cg *balancer.CellGroup
 
 	cgs := sb.bal.Space().CellGroups()
-	for iter := range cgs {
-		l := cgs[iter].TotalLoad()
-		c, err := cgs[iter].Node().Capacity().Get()
+	for i := range cgs {
+		l := cgs[i].TotalLoad()
+		c, err := cgs[i].Node().Capacity().Get()
 		if err != nil {
-			log.Println(err)
 			continue
 		}
 		dc := c - float64(l) - float64(di.Size())
-		//dc := c - float64(di.Size())
 		if dc < 0 {
 			continue
 		}
-		if cgs[iter].Range().Len <= 0 {
+		if cgs[i].Range().Len <= 0 {
 			continue
 		}
 
 		// find closest cell to filled group
-		if cgs[iter].Range().Max <= cid {
-			if lft := int(cid) - int(cgs[iter].Range().Max); lft < dis {
+		if cgs[i].Range().Max <= cid {
+			if lft := int(cid) - int(cgs[i].Range().Max); lft < dis {
 				dis = lft
-				ncID = cgs[iter].Range().Max - 1 //closest cell in available group
+				ncID = cgs[i].Range().Max - 1 //closest cell in available group
 			}
-		} else if cgs[iter].Range().Min > cid {
-			if rght := int(cgs[iter].Range().Min) - int(cid); rght < dis {
+		} else if cgs[i].Range().Min > cid {
+			if rght := int(cgs[i].Range().Min) - int(cid); rght < dis {
 				dis = rght
-				ncID = cgs[iter].Range().Min //closest cell in available group
+				ncID = cgs[i].Range().Min //closest cell in available group
 			}
 		}
 	}
@@ -213,12 +193,12 @@ func (sb *SFC) Nodes() ([]nodes.Node, error) {
 	//defer sb.m.RUnlock()
 	nbs := sb.bal.Nodes()
 	ns := make([]nodes.Node, len(nbs))
-	for iter := range nbs {
-		n, ok := nbs[iter].(nodes.Node)
+	for i := range nbs {
+		n, ok := nbs[i].(nodes.Node)
 		if !ok {
 			return nil, errors.New("wrong node type")
 		}
-		ns[iter] = n
+		ns[i] = n
 	}
 	return ns, nil
 }

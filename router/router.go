@@ -187,12 +187,13 @@ func (h *Router) fillBalancerNode(n nodes.Node, keyCh chan<- string, ctx context
 		case <-ctx.Done():
 			return nil
 		default:
-			for iter := range keys {
+			for i := range keys {
 				select {
 				case <-ctx.Done():
 					return nil
-				case keyCh <- keys[iter]:
+				case keyCh <- keys[i]:
 				}
+
 			}
 		}
 		return nil
@@ -245,20 +246,19 @@ func (h *Router) redistributeKeysNode(n nodes.Node, ctx context.Context) func() 
 			}
 		}
 
-		for iter := range keys {
+		for i := range keys {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
-				en, err := h.LocateKey(keys[iter])
+				en, err := h.LocateKey(keys[i])
 				if err != nil {
 					return err
 				}
 				if en.ID() != n.ID() {
-					res[en] = append(res[en], keys[iter])
+					res[en] = append(res[en], keys[i])
 				}
 			}
-
 		}
 		select {
 		case <-ctx.Done():

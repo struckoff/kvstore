@@ -2,8 +2,8 @@ package dataitem
 
 import (
 	"github.com/pkg/errors"
-	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/router/config"
+	balancer "github.com/struckoff/sfcframework"
 )
 
 type NewDataItemFunc func(string) (balancer.DataItem, error)

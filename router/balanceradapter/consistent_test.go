@@ -3,7 +3,7 @@ package balanceradapter
 import (
 	"github.com/lafikl/consistent"
 	"github.com/stretchr/testify/assert"
-	"github.com/struckoff/kvstore/router/mocks"
+	"github.com/struckoff/kvstore/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
 	"sort"
 	"sync"

@@ -3,10 +3,10 @@ package router
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	balancer "github.com/struckoff/SFCFramework"
-	balancermocs "github.com/struckoff/SFCFramework/mocks"
 	"github.com/struckoff/kvstore/router/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
+	balancer "github.com/struckoff/sfcframework"
+	balancermocs "github.com/struckoff/sfcframework/mocks"
 	"testing"
 )
 

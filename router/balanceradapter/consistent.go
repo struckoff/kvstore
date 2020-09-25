@@ -3,8 +3,8 @@ package balanceradapter
 import (
 	"github.com/lafikl/consistent"
 	"github.com/pkg/errors"
-	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/router/nodes"
+	balancer "github.com/struckoff/sfcframework"
 	"sync"
 )
 
@@ -68,8 +68,8 @@ func (c *Consistent) RemoveData(di balancer.DataItem) error {
 func (c *Consistent) Nodes() ([]nodes.Node, error) {
 	names := c.ring.Hosts()
 	ns := make([]nodes.Node, len(names))
-	for iter := range names {
-		ni, ok := c.nodes.Load(names[iter])
+	for i := range names {
+		ni, ok := c.nodes.Load(names[i])
 		if !ok {
 			return nil, errors.New("node not found")
 		}
@@ -77,7 +77,7 @@ func (c *Consistent) Nodes() ([]nodes.Node, error) {
 		if !ok {
 			return nil, errors.New("wrong node type")
 		}
-		ns[iter] = n
+		ns[i] = n
 	}
 	return ns, nil
 }

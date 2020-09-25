@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/stretchr/testify/assert"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
@@ -12,7 +12,6 @@ import (
 	"sort"
 	"testing"
 
-	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	bolt "go.etcd.io/bbolt"
 )
@@ -52,7 +51,7 @@ func TestNewInternalNode(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         &bolt.DB{},
 			},
 		},
@@ -67,9 +66,9 @@ func TestNewInternalNode(t *testing.T) {
 				Capacity:   tt.args.c,
 				Balancer:   &tt.args.bConf,
 			}
-			metrics := make(chan *influxdb2.Point)
+			metrics := make(chan *write.Point)
 			defer close(metrics)
-			go func(metrics chan *influxdb2.Point) {
+			go func(metrics chan *write.Point) {
 				for m := range metrics {
 					if m == nil {
 						fmt.Println("closed")
@@ -97,7 +96,7 @@ func TestInternalNode_Meta(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -112,7 +111,7 @@ func TestInternalNode_Meta(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: &rpcapi.NodeMeta{
@@ -149,13 +148,13 @@ func TestInternalNode_Capacity(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   balancer.Capacity
+		want   Capacity
 	}{
 		{
 			name: "test",
@@ -164,10 +163,10 @@ func TestInternalNode_Capacity(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
-			want: nodes.NewCapacity(2.3),
+			want: NewCapacity(2.3),
 		},
 	}
 	for _, tt := range tests {
@@ -193,7 +192,7 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -208,7 +207,7 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_addr",
@@ -237,7 +236,7 @@ func TestInternalNode_ID(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -252,7 +251,7 @@ func TestInternalNode_ID(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_id",
@@ -281,13 +280,13 @@ func TestInternalNode_Power(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   balancer.Power
+		want   nodes.Power
 	}{
 		{
 			name: "test",
@@ -296,7 +295,7 @@ func TestInternalNode_Power(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: nodes.NewPower(1.1),
@@ -325,7 +324,7 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -340,7 +339,7 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_raddr",
@@ -455,9 +454,9 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			metrics := make(chan *influxdb2.Point)
+			metrics := make(chan *write.Point)
 			defer close(metrics)
-			go func(metrics chan *influxdb2.Point) {
+			go func(metrics chan *write.Point) {
 				for m := range metrics {
 					if m == nil {
 						return
@@ -487,8 +486,8 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			}
 
 			keys := make([]string, len(tt.wantBeforeRemove.KVs))
-			for iter := range tt.wantBeforeRemove.KVs {
-				keys[iter] = tt.wantBeforeRemove.KVs[iter].Key
+			for i := range tt.wantBeforeRemove.KVs {
+				keys[i] = tt.wantBeforeRemove.KVs[i].Key
 			}
 
 			kvs, err := n.Receive(keys)
@@ -519,8 +518,8 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			}
 
 			keys = make([]string, len(tt.wantAfterRemove.KVs))
-			for iter := range tt.wantAfterRemove.KVs {
-				keys[iter] = tt.wantAfterRemove.KVs[iter].Key
+			for i := range tt.wantAfterRemove.KVs {
+				keys[i] = tt.wantAfterRemove.KVs[i].Key
 			}
 
 			kvs, err = n.Receive(keys)

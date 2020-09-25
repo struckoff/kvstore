@@ -2,8 +2,9 @@ package store
 
 import (
 	"fmt"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
-	"log"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -17,7 +18,7 @@ import (
 // RunRouter - register service in consul
 // Function register TTL check and sends heartbeat each Config.Health.CheckInterval
 func (inn *LocalNode) RunConsul(conf *Config) error {
-	log.Println("Announcing in consul")
+	logger.Logger().Info("announcing in consul", zap.String("Address", conf.Address))
 	if err := inn.consulAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in consul")
 	}
@@ -51,14 +52,9 @@ func (inn *LocalNode) consulAnnounce(conf *Config) (err error) {
 
 	// Create heartbeat check
 	acc := consulapi.AgentServiceCheck{
-		CheckID: checkID,
-		Name:    checkID,
-		Status:  consulapi.HealthCritical,
-		//TCP:      conf.RPCAddress,
-		//Interval: conf.ConfigConsul.CheckInterval,
-		//Timeout:  conf.ConfigConsul.CheckTimeout,
-		//AliasNode:                      conf.Name,
-		//AliasService:                   conf.ConfigConsul.Service,
+		CheckID:                        checkID,
+		Name:                           checkID,
+		Status:                         consulapi.HealthCritical,
 		DeregisterCriticalServiceAfter: conf.Health.DeregisterCriticalServiceAfter,
 		TTL:                            (checkInterval + checkTimeout).String(),
 	}
@@ -105,12 +101,11 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 
 	lwID := atomic.LoadInt64(inn.lwID)
 	if lwID >= int64(id) {
-		log.Printf("event id %d less than last processed %d", id, lwID)
+		logger.Logger().Warn("event ID less than last processed ID", zap.Uint64("event ID", id), zap.Int64("last processed ID", lwID))
 		return
 	}
 
 	entries, ok := data.([]*consulapi.ServiceEntry)
-	//log.Println(id, len(entries))
 	if !ok {
 		return
 	}
@@ -130,17 +125,17 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 		}
 	}
 	if err := inn.kvr.SetNodes(ns); err != nil {
-		log.Println(err.Error())
+		logger.Logger().Error("unable to set nodes", zap.Error(err))
 	}
 	locations, err := inn.keysLocations()
 	if err != nil {
-		log.Println(err.Error())
+		logger.Logger().Error("unable to get keys locations", zap.Error(err))
 		return
 	}
 	inn.Move(locations)
 
 	if swapped := atomic.CompareAndSwapInt64(inn.lwID, lwID, int64(id)); !swapped {
-		log.Println("last watcher ID was not swapped")
+		logger.Logger().Warn("last watcher ID was not swapped")
 		inn.serviceHandler(id, entries)
 		return
 	}
@@ -155,12 +150,12 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- nodes.Nod
 	}
 	en, err := nodes.NewExternalNodeByAddr(addr, inn.kvr.Hasher())
 	if err != nil {
-		log.Printf("unable to connect to node %s(%s): %s", id, addr, err.Error())
+		logger.Logger().Info("unable to connect to node", zap.String("Node", id), zap.String("Address", addr), zap.Error(err))
 		nCh <- nil
 		return
 	}
 	nCh <- en
-	log.Printf("registered node %s(%s)", id, addr)
+	logger.Logger().Info("registered node", zap.String("Node", id), zap.String("Address", addr))
 }
 
 //keysLocations - returns keys which should be moved to another node
@@ -170,13 +165,13 @@ func (inn *LocalNode) keysLocations() (map[nodes.Node][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for iter := range keys {
-		n, err := inn.kvr.LocateKey(keys[iter])
+	for i := range keys {
+		n, err := inn.kvr.LocateKey(keys[i])
 		if err != nil {
 			return nil, err
 		}
 		if inn.ID() != n.ID() {
-			res[n] = append(res[n], keys[iter])
+			res[n] = append(res[n], keys[i])
 		}
 	}
 	return res, nil
@@ -188,7 +183,7 @@ func (inn *LocalNode) updateTTLConsul(interval time.Duration, checkID string) {
 	defer ticker.Stop()
 	for range ticker.C {
 		if err := inn.consul.Agent().PassTTL(checkID, ""); err != nil {
-			log.Printf("err=\"Check failed\" msg=\"%s\"", err.Error())
+			logger.Logger().Warn("check failed", zap.Error(err))
 		}
 	}
 }

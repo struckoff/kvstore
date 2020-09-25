@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
@@ -33,7 +35,7 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	return r
 }
 
-func (h *Router) EnableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) EnableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	msg := "logs enabled"
 	log.SetOutput(os.Stdout)
 	log.Println(msg)
@@ -42,7 +44,7 @@ func (h *Router) EnableLog(w http.ResponseWriter, r *http.Request, ps httprouter
 	}
 }
 
-func (h *Router) DisableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) DisableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	msg := "logs disabled"
 	log.Println(msg)
 	log.SetOutput(ioutil.Discard)
@@ -51,18 +53,18 @@ func (h *Router) DisableLog(w http.ResponseWriter, r *http.Request, ps httproute
 	}
 }
 
-func (h *Router) CallOptimize(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) CallOptimize(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	if err := h.Optimize(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(err.Error())
+		logger.Logger().Error("optimizer error", zap.Error(err))
 	}
 
 	if _, err := w.Write([]byte("Optimize complete")); err != nil {
-		log.Println(err)
+		logger.Logger().Error("optimizer error", zap.Error(err))
 	}
 }
 
-func (h *Router) Config(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Config(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	if err := json.NewEncoder(w).Encode(h.conf); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -129,7 +131,7 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 			}()
 			kvs, err = n.Receive(keys)
 			if err != nil {
-				log.Print(err)
+				logger.Logger().Error("recieve error", zap.Error(err))
 				return
 			}
 		}(n, keys, kvsCh)
@@ -137,7 +139,7 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 	var resp rpcapi.KeyValues
 	resp.KVs = make([]*rpcapi.KeyValue, 0)
-	for iter := 0; iter < len(nmk); iter++ {
+	for i := 0; i < len(nmk); i++ {
 		kvs := <-kvsCh
 		if kvs == nil {
 			continue
@@ -161,18 +163,18 @@ func byteSlice2String(bs []byte) string {
 
 func (h *Router) keysOnNodes(keys []string) (map[nodes.Node][]string, error) {
 	nmk := make(map[nodes.Node][]string)
-	for iter := range keys {
-		n, err := h.LocateKey(keys[iter])
+	for i := range keys {
+		n, err := h.LocateKey(keys[i])
 		if err != nil {
 			return nil, err
 		}
-		nmk[n] = append(nmk[n], keys[iter])
+		nmk[n] = append(nmk[n], keys[i])
 	}
 	return nmk, nil
 }
 
 //Explore returns a list of keys on nodes
-func (h *Router) Explore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Explore(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	h.opLock.Lock()
 	defer h.opLock.Unlock()
 	res, err := h.nodeKeys()
@@ -223,12 +225,12 @@ func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) f
 			case <-ctx.Done():
 				return nil
 			default:
-				for iter := range keys {
+				for i := range keys {
 					select {
 					case <-ctx.Done():
 						return nil
 					default:
-						di, err := h.ndf(keys[iter])
+						di, err := h.ndf(keys[i])
 						if err != nil {
 							return err
 						}
@@ -237,7 +239,7 @@ func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) f
 							return err
 						}
 						k := fmt.Sprintf("%d", cid)
-						sm.Append(k, keys[iter])
+						sm.Append(k, keys[i])
 					}
 				}
 			}
@@ -246,7 +248,7 @@ func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) f
 	}
 }
 
-func (h *Router) Cid(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Cid(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	sm, err := h.cidToKeys()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -265,7 +267,7 @@ func (h *Router) Cid(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 }
 
 // Nodes returns a list of nodes
-func (h *Router) Nodes(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Nodes(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	metas, err := h.nodes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -282,8 +284,8 @@ func (h *Router) nodes() ([]*rpcapi.NodeMeta, error) {
 		return nil, err
 	}
 	metas := make([]*rpcapi.NodeMeta, len(ns))
-	for iter, n := range ns {
-		metas[iter] = n.Meta()
+	for i, n := range ns {
+		metas[i] = n.Meta()
 	}
 	return metas, nil
 }
@@ -301,7 +303,7 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 			defer wg.Done()
 			keys, err := n.Explore()
 			if err != nil {
-				log.Printf("%s: %s", n.ID(), err.Error())
+				logger.Logger().Error("node keys error", zap.String("Node", n.ID()), zap.Error(err))
 				return
 			}
 			sm.Put(n.ID(), keys)
@@ -311,7 +313,7 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 	return res, nil
 }
 
-func (h *Router) CallRebuild(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) CallRebuild(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	ns, err := h.bal.Nodes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -334,7 +336,7 @@ func (h *Router) CallRebuild(w http.ResponseWriter, r *http.Request, ps httprout
 	}
 	for _, n := range ns {
 		c, _ := n.Capacity().Get()
-		if _, err := fmt.Fprintf(w, "node: %s, cap: %d", n.ID(), c); err != nil {
+		if _, err := fmt.Fprintf(w, "node: %s, cap: %f", n.ID(), c); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -348,7 +350,7 @@ func (h *Router) Optimize() error {
 }
 
 func (h *Router) optimize() error {
-	log.Println("Optimize started")
+	logger.Logger().Info("Optimize started")
 	if err := h.fillBalancer(); err != nil {
 		return err
 	}
@@ -358,6 +360,6 @@ func (h *Router) optimize() error {
 	if err := h.redistributeKeys(); err != nil {
 		return err
 	}
-	log.Println("Optimize complete")
+	logger.Logger().Info("Optimize complete")
 	return nil
 }

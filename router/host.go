@@ -2,13 +2,14 @@ package router
 
 import (
 	"context"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/balanceradapter"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/nodes"
-	"log"
+	"github.com/struckoff/sfcframework/curve"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -68,10 +69,10 @@ type Host struct {
 	httplatency time.Duration
 }
 
-func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
+func (h *Host) RPCRegister(_ context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
 	en, err := nodes.NewExternalNode(in, h.kvr.Hasher())
 	if err != nil {
-		log.Println(err)
+		logger.Logger().Error("Error registering node", zap.Error(err))
 		return nil, errors.Wrap(err, "failed to create external node")
 	}
 
@@ -79,17 +80,17 @@ func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Em
 	onRemove := h.onRemoveHandler(en.ID())
 	check, err := ttl.NewTTLCheck(in.Check, onDead, onRemove)
 	if err != nil {
-		log.Println(err)
+		logger.Logger().Error("Error registering check", zap.String("Node", en.ID()), zap.Error(err))
 		return nil, errors.Wrap(err, "failed to create ttl check")
 	}
 	h.checks.Store(en.ID(), check)
 	if err := h.kvr.AddNode(en); err != nil {
-		log.Println(err)
+		logger.Logger().Error("Error adding node", zap.String("Node", en.ID()), zap.Error(err))
 		return nil, errors.Wrap(err, "failed to addNode")
 	}
 	return &rpcapi.Empty{}, nil
 }
-func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty, error) {
+func (h *Host) RPCHeartbeat(_ context.Context, in *rpcapi.Ping) (*rpcapi.Empty, error) {
 	if ok := h.checks.Update(in.NodeID); !ok {
 		return nil, errors.Errorf("unable to find check for node(%s)", in.NodeID)
 	}
@@ -97,7 +98,7 @@ func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty
 }
 func (h *Host) RunHTTPServer(addr string) error {
 	r := h.kvr.HTTPHandler()
-	log.Printf("Run server [%s]", addr)
+	logger.Logger().Info("Run server", zap.String("address", addr))
 	l := LatencyMiddleware(r, h.httplatency)
 	if err := http.ListenAndServe(addr, l); err != nil {
 		return err
@@ -107,20 +108,20 @@ func (h *Host) RunHTTPServer(addr string) error {
 
 func onDeadHandler(nodeID string) func() {
 	return func() {
-		log.Printf("node(%s) seems to be dead", nodeID)
+		logger.Logger().Warn("node seems to be dead", zap.String("Node", nodeID))
 	}
 }
 func (h *Host) onRemoveHandler(nodeID string) func() {
 	return func() {
 		if err := h.kvr.RemoveNode(nodeID); err != nil {
-			log.Printf("Error removing node(%s): %s", nodeID, err.Error())
+			logger.Logger().Error("Error removing node", zap.String("Node", nodeID), zap.Error(err))
 			return
 		}
 		if err := h.kvr.Optimize(); err != nil {
-			log.Printf("Error redistributing keys: %s", err.Error())
+			logger.Logger().Error("Error redistributing keys", zap.Error(err))
 			return
 		}
 		h.checks.Delete(nodeID)
-		log.Printf("node(%s) removed", nodeID)
+		logger.Logger().Info("node removed", zap.String("Node", nodeID))
 	}
 }

@@ -2,7 +2,7 @@
 GOCMD=go
 GOBUILD=$(GOCMD) build -v
 GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test -v
+GOTEST=$(GOCMD) test -race -v
 GOGET=$(GOCMD) get
 BINARY_FOLDER=bin
 STORE_BINARY_NAME=kvstore

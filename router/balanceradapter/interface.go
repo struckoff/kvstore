@@ -1,8 +1,8 @@
 package balanceradapter
 
 import (
-	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/router/nodes"
+	balancer "github.com/struckoff/sfcframework"
 )
 
 type Balancer interface {
