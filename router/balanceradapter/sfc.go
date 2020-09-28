@@ -45,6 +45,7 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &SFC{bal: bal}, nil
 }
 

@@ -61,7 +61,7 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- 
 
 // LocalNode represents local node
 type LocalNode struct {
-	mu          sync.RWMutex
+	//mu          sync.RWMutex
 	id          string
 	address     string
 	rpcaddress  string
@@ -92,48 +92,48 @@ func (inn *LocalNode) RunHTTPServer(addr string) error {
 
 //ID returns the node's ID
 func (inn *LocalNode) ID() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.id
 }
 
 //RPCAddress returns the node's rpc address
 func (inn *LocalNode) RPCAddress() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.rpcaddress
 }
 
 //HTTPAddress returns the node's http address
 func (inn *LocalNode) HTTPAddress() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.address
 }
 
 //Power returns the node's power
 func (inn *LocalNode) Power() node.Power {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.p
 }
 
 //Capacity returns the node's capacity
 func (inn *LocalNode) Capacity() node.Capacity {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return &inn.c
 }
 
 func (inn *LocalNode) Hash() uint64 {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.h
 }
 
 func (inn *LocalNode) SetHash(h uint64) {
-	inn.mu.Lock()
-	defer inn.mu.Unlock()
+	//inn.mu.Lock()
+	//defer inn.mu.Unlock()
 	inn.h = h
 }
 
@@ -253,6 +253,9 @@ func (inn *LocalNode) Move(nk map[nodes.Node][]string) error {
 			}
 			err = inn.db.Batch(func(tx *bolt.Tx) error {
 				bc := tx.Bucket(mainBucket)
+				if bc == nil {
+					return nil
+				}
 				for i := range keys {
 					if err := bc.Delete([]byte(keys[i])); err != nil {
 						return errors.Wrap(err, "failed to delete keys")
@@ -291,16 +294,13 @@ func (inn *LocalNode) Explore() ([]string, error) {
 
 // Return meta information about the node
 func (inn *LocalNode) Meta() *rpcapi.NodeMeta {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.meta()
 }
 
 func (inn *LocalNode) meta() *rpcapi.NodeMeta {
-	cp, err := inn.c.Get()
-	if err != nil {
-		return nil
-	}
+	cp, _ := inn.c.Get()
 	return &rpcapi.NodeMeta{
 		ID:         inn.ID(),
 		Address:    inn.HTTPAddress(),
