@@ -44,6 +44,33 @@ func TestSpaceTransform(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name: "not float64 lon",
+			args: args{
+				values:  []interface{}{"42.3", 21.21},
+				dimsize: 4,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "not float64 lat",
+			args: args{
+				values:  []interface{}{21.21, "42.3"},
+				dimsize: 4,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "not enough vals",
+			args: args{
+				values:  []interface{}{21.21},
+				dimsize: 4,
+			},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -441,6 +441,21 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 	}
 }
 
+func TestNewLocalNode_DBErr(t *testing.T) {
+	lnn := &LocalNode{db: &bolt.DB{}}
+	err := lnn.Store("test-key", nil)
+	assert.Error(t, err)
+
+	_, err = lnn.Receive([]string{"test-key"})
+	assert.Error(t, err)
+
+	err = lnn.Remove([]string{"test-key"})
+	assert.Error(t, err)
+
+	_, err = lnn.Explore()
+	assert.Error(t, err)
+}
+
 func TestNewLocalNode_KVR(t *testing.T) {
 	type want struct {
 		err bool

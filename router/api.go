@@ -11,9 +11,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"unsafe"
@@ -28,30 +26,29 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	r.GET("/list", h.Explore)
 	r.GET("/cid", h.Cid)
 	r.GET("/config", h.Config)
-	r.OPTIONS("/config/log/enable", h.EnableLog)
-	r.OPTIONS("/config/log/disable", h.DisableLog)
+	//r.OPTIONS("/config/log/enable", h.EnableLog)
+	//r.OPTIONS("/config/log/disable", h.DisableLog)
 	r.OPTIONS("/optimize", h.CallOptimize)
-	r.OPTIONS("/rebuild", h.CallRebuild)
 	return r
 }
 
-func (h *Router) EnableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	msg := "logs enabled"
-	log.SetOutput(os.Stdout)
-	log.Println(msg)
-	if _, err := w.Write([]byte(msg)); err != nil {
-		log.Println(err)
-	}
-}
-
-func (h *Router) DisableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	msg := "logs disabled"
-	log.Println(msg)
-	log.SetOutput(ioutil.Discard)
-	if _, err := w.Write([]byte(msg)); err != nil {
-		log.Println(err)
-	}
-}
+//func (h *Router) EnableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+//	msg := "logs enabled"
+//	log.SetOutput(os.Stdout)
+//	log.Println(msg)
+//	if _, err := w.Write([]byte(msg)); err != nil {
+//		log.Println(err)
+//	}
+//}
+//
+//func (h *Router) DisableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+//	msg := "logs disabled"
+//	log.Println(msg)
+//	log.SetOutput(ioutil.Discard)
+//	if _, err := w.Write([]byte(msg)); err != nil {
+//		log.Println(err)
+//	}
+//}
 
 func (h *Router) CallOptimize(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	if err := h.Optimize(); err != nil {
@@ -311,36 +308,6 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 	}
 	wg.Wait()
 	return res, nil
-}
-
-func (h *Router) CallRebuild(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	ns, err := h.bal.Nodes()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := h.bal.SetNodes(nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	for _, n := range ns {
-		if err := h.bal.AddNode(n); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-	ns, err = h.bal.Nodes()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	for _, n := range ns {
-		c, _ := n.Capacity().Get()
-		if _, err := fmt.Fprintf(w, "node: %s, cap: %f", n.ID(), c); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
 }
 
 func (h *Router) Optimize() error {

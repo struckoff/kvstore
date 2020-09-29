@@ -3,7 +3,7 @@ package router
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/struckoff/kvstore/router/mocks"
+	"github.com/struckoff/kvstore/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
 	balancer "github.com/struckoff/sfcframework"
 	balancermocs "github.com/struckoff/sfcframework/mocks"
@@ -12,9 +12,15 @@ import (
 
 func TestRouter_AddNode(t *testing.T) {
 	mn := &mocks.Node{}
+	mn.On("Explore").Return([]string{}, nil)
+	mn.On("Move", mock.Anything).Return(nil)
 
 	mbal := &mocks.Balancer{}
 	mbal.On("AddNode", mn).Return(nil)
+	mbal.On("Reset").Return(nil)
+	mbal.On("Nodes").Return([]nodes.Node{mn}, nil)
+	mbal.On("Optimize").Return(nil)
+	mbal.On("AddNode", mock.Anything).Return(nil)
 	h := &Router{
 		bal: mbal,
 	}
@@ -48,7 +54,7 @@ func TestRouter_LocateKey(t *testing.T) {
 	mn.On("ID").Return(name)
 
 	mbal := &mocks.Balancer{}
-	mbal.On("LocateData", mock.AnythingOfType("*mocks.DataItem")).Return(mn, nil)
+	mbal.On("LocateData", mock.AnythingOfType("*mocks.DataItem")).Return(mn, uint64(1), nil)
 
 	h := &Router{
 		bal: mbal,
