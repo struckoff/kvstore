@@ -2,15 +2,17 @@ package store
 
 import (
 	"github.com/influxdata/influxdb-client-go/api/write"
+	"github.com/struckoff/kvstore/logger"
+	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodes"
-	"log"
+	"github.com/struckoff/sfcframework/node"
+	"go.uber.org/zap"
 	"net/http"
 	"sync"
 	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
-	balancer "github.com/struckoff/SFCFramework"
 	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	bolt "go.etcd.io/bbolt"
@@ -20,7 +22,7 @@ import (
 var mainBucket = []byte("pairs")
 
 // Return new instance LocalNode.
-func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- *write.Point) (*LocalNode, error) {
+func NewLocalNode(conf *Config, ndf dataitem.NewDataItemFunc, db *bolt.DB, kvr *router.Router, metrics chan<- *write.Point) (*LocalNode, error) {
 	lwID := int64(0)
 	ln := &LocalNode{
 		id:          *conf.Name,
@@ -35,6 +37,7 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- 
 		httplatency: conf.Balancer.Latency.Duration,
 		lwID:        &lwID,
 		metrics:     metrics,
+		ndf:         ndf,
 	}
 	if ln.kvr != nil {
 		h, err := ln.kvr.Hasher().Sum(ln.meta())
@@ -50,17 +53,17 @@ func NewLocalNode(conf *Config, db *bolt.DB, kvr *router.Router, metrics chan<- 
 		}
 		ln.consul = consul
 	}
-	keys, err := ln.Explore()
+	dis, err := ln.Explore()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to explore local node")
 	}
-	ln.c.Add(-float64(len(keys))) // reduce capacity
+	ln.c.Add(-float64(len(dis))) // reduce capacity
 	return ln, nil
 }
 
 // LocalNode represents local node
 type LocalNode struct {
-	mu          sync.RWMutex
+	//mu          sync.RWMutex
 	id          string
 	address     string
 	rpcaddress  string
@@ -77,12 +80,13 @@ type LocalNode struct {
 	httplatency time.Duration
 	lwID        *int64
 	metrics     chan<- *write.Point
+	ndf         dataitem.NewDataItemFunc
 }
 
 func (inn *LocalNode) RunHTTPServer(addr string) error {
 	h := inn.kvr.HTTPHandler()
 	l := router.LatencyMiddleware(h, inn.httplatency)
-	log.Printf("HTTP server listening on %s", addr)
+	logger.Logger().Info("HTTP server listening", zap.String("address", addr))
 	if err := http.ListenAndServe(addr, l); err != nil {
 		return err
 	}
@@ -91,77 +95,85 @@ func (inn *LocalNode) RunHTTPServer(addr string) error {
 
 //ID returns the node's ID
 func (inn *LocalNode) ID() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.id
 }
 
 //RPCAddress returns the node's rpc address
 func (inn *LocalNode) RPCAddress() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.rpcaddress
 }
 
 //HTTPAddress returns the node's http address
 func (inn *LocalNode) HTTPAddress() string {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.address
 }
 
 //Power returns the node's power
-func (inn *LocalNode) Power() balancer.Power {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+func (inn *LocalNode) Power() node.Power {
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.p
 }
 
 //Capacity returns the node's capacity
-func (inn *LocalNode) Capacity() balancer.Capacity {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+func (inn *LocalNode) Capacity() nodes.Capacity {
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return &inn.c
 }
 
 func (inn *LocalNode) Hash() uint64 {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.h
 }
 
 func (inn *LocalNode) SetHash(h uint64) {
-	inn.mu.Lock()
-	defer inn.mu.Unlock()
+	//inn.mu.Lock()
+	//defer inn.mu.Unlock()
 	inn.h = h
 }
 
 // Store value for a given key in local storage
-func (inn *LocalNode) Store(key string, body []byte) error {
+func (inn *LocalNode) Store(kv *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
 	err := inn.db.Update(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
 			return err
 		}
-		return bc.Put([]byte(key), body)
+		return bc.Put([]byte(kv.Key.ID), []byte(kv.Value))
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	inn.c.Add(-1) // reduce capacity
-	return nil
+	di := kv.Key
+	di.Size = uint64(len([]byte(kv.Value)))
+	return di, nil
 }
 
 // Store KV pairs in local storage
-func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
+func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
 	cp := 0.0
-	err := inn.db.Update(func(tx *bolt.Tx) error {
+	res := make([]*rpcapi.DataItem, len(pairs))
+	err := inn.db.Batch(func(tx *bolt.Tx) error {
 		bc, err := tx.CreateBucketIfNotExists(mainBucket)
 		if err != nil {
 			return err
 		}
-		for iter := range pairs {
-			if err := bc.Put([]byte(pairs[iter].Key), []byte(pairs[iter].Value)); err != nil {
+		for i := range pairs {
+			b := []byte(pairs[i].Value)
+			size := len(b)
+			di := pairs[i].Key
+			di.Size = uint64(size)
+			res[i] = di
+			if err := bc.Put([]byte(di.ID), b); err != nil {
 				return errors.Wrap(err, "failed to store pair")
 			}
 			cp++
@@ -169,25 +181,25 @@ func (inn *LocalNode) StorePairs(pairs []*rpcapi.KeyValue) error {
 		return nil
 	})
 	inn.c.Add(-cp) // reduce capacity
-	return err
+	return res, err
 }
 
 // Return value for a given key from local storage
-func (inn *LocalNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
+func (inn *LocalNode) Receive(dis []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
 	kvs := &rpcapi.KeyValues{
-		KVs: make([]*rpcapi.KeyValue, len(keys)),
+		KVs: make([]*rpcapi.KeyValue, len(dis)),
 	}
 	err := inn.db.View(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
 			return errors.New("unable to receive value, bucket not found")
 		}
-		for iter := range keys {
-			val := bc.Get([]byte(keys[iter]))
+		for i := range dis {
+			val := bc.Get([]byte(dis[i].ID))
 			ok := val != nil
-			kvs.KVs[iter] = &rpcapi.KeyValue{
-				Key:   keys[iter],
-				Value: string(val),
+			kvs.KVs[i] = &rpcapi.KeyValue{
+				Key:   dis[i],
+				Value: val,
 				Found: ok,
 			}
 		}
@@ -197,17 +209,21 @@ func (inn *LocalNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
 }
 
 // Remove value for a given key
-func (inn *LocalNode) Remove(keys []string) error {
+func (inn *LocalNode) Remove(rdis []*rpcapi.DataItem) (dis []*rpcapi.DataItem, err error) {
 	cp := 0.0
-	err := inn.db.Update(func(tx *bolt.Tx) error {
+	err = inn.db.Update(func(tx *bolt.Tx) error {
 		bc := tx.Bucket(mainBucket)
 		if bc == nil {
 			return nil
 		}
-		for iter := range keys {
-			if err := bc.Delete([]byte(keys[iter])); err != nil {
+		for i := range rdis {
+			size := uint64(len(bc.Get([]byte(rdis[i].ID))))
+			if err := bc.Delete([]byte(rdis[i].ID)); err != nil {
 				return err
 			}
+
+			rdis[i].Size = size
+			dis = append(dis, rdis[i])
 			cp++
 		}
 		return nil
@@ -215,56 +231,68 @@ func (inn *LocalNode) Remove(keys []string) error {
 	inn.c.Add(cp) // increase capacity
 
 	if err != nil {
-		return errors.Wrap(err, "failed to remove key")
+		return nil, errors.Wrap(err, "failed to remove key")
 	}
-	return nil
+	return
 }
 
 // Move values for a given keys to another node
-func (inn *LocalNode) Move(nk map[nodes.Node][]string) error {
+func (inn *LocalNode) Move(nk map[nodes.Node][]*rpcapi.DataItem) error {
 	var wg sync.WaitGroup
-	for en, keys := range nk {
-		if len(keys) == 0 {
+	for en, dis := range nk {
+		if len(dis) == 0 {
 			continue
 		}
 		wg.Add(1)
-		go func(en nodes.Node, keys []string, wg *sync.WaitGroup) {
+		go func(en nodes.Node, dis []*rpcapi.DataItem, wg *sync.WaitGroup) {
 			defer wg.Done()
-			err := inn.db.Update(func(tx *bolt.Tx) error {
+			pairs := make([]*rpcapi.KeyValue, len(dis))
+			err := inn.db.View(func(tx *bolt.Tx) error {
 				bc := tx.Bucket(mainBucket)
 				if bc == nil {
 					return nil
 				}
-				pairs := make([]*rpcapi.KeyValue, len(keys))
-				for iter := range keys {
-					body := bc.Get([]byte(keys[iter]))
-					pairs[iter] = &rpcapi.KeyValue{Key: keys[iter], Value: string(body)}
+				for i := range dis {
+					body := bc.Get([]byte(dis[i].ID))
+					pairs[i] = &rpcapi.KeyValue{Key: dis[i], Value: body}
 				}
-				if err := en.StorePairs(pairs); err != nil {
-					return errors.Wrap(err, "failed to move keys and values to another node")
+				return nil
+			})
+			if err != nil {
+				logger.Logger().Error("error moving keys", zap.Error(err), zap.String("Node", en.ID()))
+				return
+			}
+			_, err = en.StorePairs(pairs)
+			if err != nil {
+				logger.Logger().Error("error moving keys", zap.Error(err), zap.String("Node", en.ID()))
+				return
+			}
+			err = inn.db.Batch(func(tx *bolt.Tx) error {
+				bc := tx.Bucket(mainBucket)
+				if bc == nil {
+					return nil
 				}
-
-				for iter := range keys {
-					if err := bc.Delete([]byte(keys[iter])); err != nil {
+				for i := range dis {
+					if err := bc.Delete([]byte(dis[i].ID)); err != nil {
 						return errors.Wrap(err, "failed to delete keys")
 					}
 				}
 				return nil
 			})
 			if err != nil {
-				log.Println(err)
+				logger.Logger().Error("error moving keys", zap.Error(err), zap.String("Node", en.ID()))
 				return
 			}
-			log.Printf("%d keys relocated to node(%s)", len(keys), en.ID())
-		}(en, keys, &wg)
+			logger.Logger().Debug("keys relocated to node", zap.Int("Amount", len(dis)), zap.String("Node", en.ID()))
+		}(en, dis, &wg)
 	}
 	wg.Wait()
 	return nil
 }
 
 // Explore returns the list of keys in local storage.
-func (inn *LocalNode) Explore() ([]string, error) {
-	res := make([]string, 0)
+func (inn *LocalNode) Explore() ([]*rpcapi.DataItem, error) {
+	res := make([]*rpcapi.DataItem, 0)
 	err := inn.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(mainBucket)
 		if b == nil {
@@ -272,7 +300,11 @@ func (inn *LocalNode) Explore() ([]string, error) {
 			return nil
 		}
 		err := b.ForEach(func(k, v []byte) error {
-			res = append(res, string(k))
+			di, err := inn.ndf(string(k), uint64(len(v)))
+			if err != nil {
+				return err
+			}
+			res = append(res, di.RPCApi())
 			return nil
 		})
 		return err
@@ -282,16 +314,13 @@ func (inn *LocalNode) Explore() ([]string, error) {
 
 // Return meta information about the node
 func (inn *LocalNode) Meta() *rpcapi.NodeMeta {
-	inn.mu.RLock()
-	defer inn.mu.RUnlock()
+	//inn.mu.RLock()
+	//defer inn.mu.RUnlock()
 	return inn.meta()
 }
 
 func (inn *LocalNode) meta() *rpcapi.NodeMeta {
-	cp, err := inn.c.Get()
-	if err != nil {
-		return nil
-	}
+	cp, _ := inn.c.Get()
 	return &rpcapi.NodeMeta{
 		ID:         inn.ID(),
 		Address:    inn.HTTPAddress(),
@@ -301,8 +330,3 @@ func (inn *LocalNode) meta() *rpcapi.NodeMeta {
 		Geo:        inn.geo,
 	}
 }
-
-//func MakeHasher(conf *router.BalancerConfig) Hasher{
-//	switch conf.NodeHash:
-//
-//}

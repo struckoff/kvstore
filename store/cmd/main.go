@@ -5,14 +5,16 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go"
 	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/balanceradapter"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/store"
+	"github.com/struckoff/sfcframework/curve"
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/zap"
 	"log"
 )
 
@@ -53,19 +55,16 @@ func run() (err error) {
 			"",
 			influxdb2.DefaultOptions().SetBatchSize(20))
 		defer client.Close()
-		writeApi := client.WriteApi("", "kvstore/autogen")
+		writeApi := client.WriteAPI("", "kvstore/autogen")
 		defer writeApi.Flush()
 		balancermode, err := conf.Balancer.Mode.String()
 		if err != nil {
-			log.Printf("unable to run metrics client: %w", err)
+			logger.Logger().Error("unable to run metrics client", zap.Error(err))
 			return
 		}
 		for p := range points {
 			p.AddTag("balancermode", balancermode)
 			writeApi.WritePoint(p)
-			//if err := ; err != nil {
-			//	log.Println("Metric write error: %s\n", err.Error())
-			//}
 		}
 	}(metrics)
 
@@ -102,12 +101,16 @@ func run() (err error) {
 		if err != nil {
 			return err
 		}
-		kvr, err := router.NewRouter(bal, hr, ndf, conf.Balancer)
+		rpcndf, err := dataitem.GetDataItemFromRpcFunc(conf.Balancer.DataMode)
+		if err != nil {
+			return err
+		}
+		kvr, err := router.NewRouter(bal, hr, ndf, rpcndf, conf.Balancer)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
 		//Initialize local node
-		inn, err = store.NewLocalNode(&conf, db, kvr, metrics)
+		inn, err = store.NewLocalNode(&conf, ndf, db, kvr, metrics)
 		if err != nil {
 			return err
 		}
@@ -120,7 +123,11 @@ func run() (err error) {
 			}
 		}(errCh, &conf)
 	case store.KvrouterMode:
-		inn, err = store.NewLocalNode(&conf, db, nil, metrics)
+		ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
+		if err != nil {
+			return err
+		}
+		inn, err = store.NewLocalNode(&conf, ndf, db, nil, metrics)
 		if err != nil {
 			return err
 		}
@@ -128,12 +135,10 @@ func run() (err error) {
 		return errors.New("wrong node node")
 	}
 
-	//go func(errCh chan error, conf *store.Config) {
 	if err := inn.RunRPCServer(&conf, errCh); err != nil {
 		//errCh <- errors.Wrap(err, "failed to run RPC server")
 		return errors.Wrap(err, "failed to run RPC server")
 	}
-	//}(errCh, &conf)
 
 	//Run discovery connection
 	go func(errCh chan error, inn *store.LocalNode, conf *store.Config) {

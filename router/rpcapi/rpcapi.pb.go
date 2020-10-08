@@ -25,12 +25,12 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type KeyValue struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=Key,proto3" json:"Key,omitempty"`
-	Value                string   `protobuf:"bytes,2,opt,name=Value,proto3" json:"Value,omitempty"`
-	Found                bool     `protobuf:"varint,3,opt,name=Found,proto3" json:"Found,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Key                  *DataItem `protobuf:"bytes,1,opt,name=Key,proto3" json:"Key,omitempty"`
+	Value                []byte    `protobuf:"bytes,2,opt,name=Value,proto3" json:"Value,omitempty"`
+	Found                bool      `protobuf:"varint,3,opt,name=Found,proto3" json:"Found,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
 func (m *KeyValue) Reset()         { *m = KeyValue{} }
@@ -58,18 +58,18 @@ func (m *KeyValue) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_KeyValue proto.InternalMessageInfo
 
-func (m *KeyValue) GetKey() string {
+func (m *KeyValue) GetKey() *DataItem {
 	if m != nil {
 		return m.Key
 	}
-	return ""
+	return nil
 }
 
-func (m *KeyValue) GetValue() string {
+func (m *KeyValue) GetValue() []byte {
 	if m != nil {
 		return m.Value
 	}
-	return ""
+	return nil
 }
 
 func (m *KeyValue) GetFound() bool {
@@ -111,7 +111,7 @@ func (m *Empty) XXX_DiscardUnknown() {
 var xxx_messageInfo_Empty proto.InternalMessageInfo
 
 type KeyReq struct {
-	Keys                 []string `protobuf:"bytes,1,rep,name=Keys,proto3" json:"Keys,omitempty"`
+	Keys                 [][]byte `protobuf:"bytes,1,rep,name=Keys,proto3" json:"Keys,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -142,7 +142,7 @@ func (m *KeyReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_KeyReq proto.InternalMessageInfo
 
-func (m *KeyReq) GetKeys() []string {
+func (m *KeyReq) GetKeys() [][]byte {
 	if m != nil {
 		return m.Keys
 	}
@@ -150,7 +150,7 @@ func (m *KeyReq) GetKeys() []string {
 }
 
 type MoveReq struct {
-	KL                   []*KeyList `protobuf:"bytes,1,rep,name=KL,proto3" json:"KL,omitempty"`
+	KLs                  []*KeyList `protobuf:"bytes,1,rep,name=KLs,proto3" json:"KLs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
 	XXX_unrecognized     []byte     `json:"-"`
 	XXX_sizecache        int32      `json:"-"`
@@ -181,19 +181,19 @@ func (m *MoveReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MoveReq proto.InternalMessageInfo
 
-func (m *MoveReq) GetKL() []*KeyList {
+func (m *MoveReq) GetKLs() []*KeyList {
 	if m != nil {
-		return m.KL
+		return m.KLs
 	}
 	return nil
 }
 
 type KeyList struct {
-	Node                 *NodeMeta `protobuf:"bytes,1,opt,name=Node,proto3" json:"Node,omitempty"`
-	Keys                 []string  `protobuf:"bytes,2,rep,name=Keys,proto3" json:"Keys,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
-	XXX_unrecognized     []byte    `json:"-"`
-	XXX_sizecache        int32     `json:"-"`
+	Node                 *NodeMeta  `protobuf:"bytes,1,opt,name=Node,proto3" json:"Node,omitempty"`
+	Keys                 *DataItems `protobuf:"bytes,2,opt,name=Keys,proto3" json:"Keys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
 func (m *KeyList) Reset()         { *m = KeyList{} }
@@ -228,7 +228,7 @@ func (m *KeyList) GetNode() *NodeMeta {
 	return nil
 }
 
-func (m *KeyList) GetKeys() []string {
+func (m *KeyList) GetKeys() *DataItems {
 	if m != nil {
 		return m.Keys
 	}
@@ -455,45 +455,6 @@ func (m *GeoData) GetLatitude() float64 {
 	return 0
 }
 
-type ExploreRes struct {
-	Keys                 []string `protobuf:"bytes,1,rep,name=Keys,proto3" json:"Keys,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ExploreRes) Reset()         { *m = ExploreRes{} }
-func (m *ExploreRes) String() string { return proto.CompactTextString(m) }
-func (*ExploreRes) ProtoMessage()    {}
-func (*ExploreRes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b2fac6d73d0553fa, []int{9}
-}
-
-func (m *ExploreRes) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ExploreRes.Unmarshal(m, b)
-}
-func (m *ExploreRes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ExploreRes.Marshal(b, m, deterministic)
-}
-func (m *ExploreRes) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ExploreRes.Merge(m, src)
-}
-func (m *ExploreRes) XXX_Size() int {
-	return xxx_messageInfo_ExploreRes.Size(m)
-}
-func (m *ExploreRes) XXX_DiscardUnknown() {
-	xxx_messageInfo_ExploreRes.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ExploreRes proto.InternalMessageInfo
-
-func (m *ExploreRes) GetKeys() []string {
-	if m != nil {
-		return m.Keys
-	}
-	return nil
-}
-
 type KeyValues struct {
 	KVs                  []*KeyValue `protobuf:"bytes,1,rep,name=KVs,proto3" json:"KVs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
@@ -505,7 +466,7 @@ func (m *KeyValues) Reset()         { *m = KeyValues{} }
 func (m *KeyValues) String() string { return proto.CompactTextString(m) }
 func (*KeyValues) ProtoMessage()    {}
 func (*KeyValues) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b2fac6d73d0553fa, []int{10}
+	return fileDescriptor_b2fac6d73d0553fa, []int{9}
 }
 
 func (m *KeyValues) XXX_Unmarshal(b []byte) error {
@@ -544,7 +505,7 @@ func (m *Capacity) Reset()         { *m = Capacity{} }
 func (m *Capacity) String() string { return proto.CompactTextString(m) }
 func (*Capacity) ProtoMessage()    {}
 func (*Capacity) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b2fac6d73d0553fa, []int{11}
+	return fileDescriptor_b2fac6d73d0553fa, []int{10}
 }
 
 func (m *Capacity) XXX_Unmarshal(b []byte) error {
@@ -583,7 +544,7 @@ func (m *Ping) Reset()         { *m = Ping{} }
 func (m *Ping) String() string { return proto.CompactTextString(m) }
 func (*Ping) ProtoMessage()    {}
 func (*Ping) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b2fac6d73d0553fa, []int{12}
+	return fileDescriptor_b2fac6d73d0553fa, []int{11}
 }
 
 func (m *Ping) XXX_Unmarshal(b []byte) error {
@@ -611,6 +572,100 @@ func (m *Ping) GetNodeID() string {
 	return ""
 }
 
+type DataItems struct {
+	DIs                  []*DataItem `protobuf:"bytes,1,rep,name=DIs,proto3" json:"DIs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
+}
+
+func (m *DataItems) Reset()         { *m = DataItems{} }
+func (m *DataItems) String() string { return proto.CompactTextString(m) }
+func (*DataItems) ProtoMessage()    {}
+func (*DataItems) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b2fac6d73d0553fa, []int{12}
+}
+
+func (m *DataItems) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DataItems.Unmarshal(m, b)
+}
+func (m *DataItems) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DataItems.Marshal(b, m, deterministic)
+}
+func (m *DataItems) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DataItems.Merge(m, src)
+}
+func (m *DataItems) XXX_Size() int {
+	return xxx_messageInfo_DataItems.Size(m)
+}
+func (m *DataItems) XXX_DiscardUnknown() {
+	xxx_messageInfo_DataItems.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DataItems proto.InternalMessageInfo
+
+func (m *DataItems) GetDIs() []*DataItem {
+	if m != nil {
+		return m.DIs
+	}
+	return nil
+}
+
+type DataItem struct {
+	ID                   []byte   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Size                 uint64   `protobuf:"varint,2,opt,name=Size,proto3" json:"Size,omitempty"`
+	Geo                  *GeoData `protobuf:"bytes,3,opt,name=Geo,proto3" json:"Geo,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DataItem) Reset()         { *m = DataItem{} }
+func (m *DataItem) String() string { return proto.CompactTextString(m) }
+func (*DataItem) ProtoMessage()    {}
+func (*DataItem) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b2fac6d73d0553fa, []int{13}
+}
+
+func (m *DataItem) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DataItem.Unmarshal(m, b)
+}
+func (m *DataItem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DataItem.Marshal(b, m, deterministic)
+}
+func (m *DataItem) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DataItem.Merge(m, src)
+}
+func (m *DataItem) XXX_Size() int {
+	return xxx_messageInfo_DataItem.Size(m)
+}
+func (m *DataItem) XXX_DiscardUnknown() {
+	xxx_messageInfo_DataItem.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DataItem proto.InternalMessageInfo
+
+func (m *DataItem) GetID() []byte {
+	if m != nil {
+		return m.ID
+	}
+	return nil
+}
+
+func (m *DataItem) GetSize() uint64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
+}
+
+func (m *DataItem) GetGeo() *GeoData {
+	if m != nil {
+		return m.Geo
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*KeyValue)(nil), "rpcapi.KeyValue")
 	proto.RegisterType((*Empty)(nil), "rpcapi.Empty")
@@ -621,10 +676,11 @@ func init() {
 	proto.RegisterType((*NodeMeta)(nil), "rpcapi.NodeMeta")
 	proto.RegisterType((*HealthCheck)(nil), "rpcapi.HealthCheck")
 	proto.RegisterType((*GeoData)(nil), "rpcapi.GeoData")
-	proto.RegisterType((*ExploreRes)(nil), "rpcapi.ExploreRes")
 	proto.RegisterType((*KeyValues)(nil), "rpcapi.KeyValues")
 	proto.RegisterType((*Capacity)(nil), "rpcapi.Capacity")
 	proto.RegisterType((*Ping)(nil), "rpcapi.Ping")
+	proto.RegisterType((*DataItems)(nil), "rpcapi.DataItems")
+	proto.RegisterType((*DataItem)(nil), "rpcapi.DataItem")
 }
 
 func init() {
@@ -632,46 +688,49 @@ func init() {
 }
 
 var fileDescriptor_b2fac6d73d0553fa = []byte{
-	// 622 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0xdd, 0x4e, 0xdb, 0x4c,
-	0x10, 0x95, 0x9d, 0xff, 0x09, 0xf0, 0xf1, 0x4d, 0xab, 0xca, 0x8a, 0x10, 0x4d, 0xad, 0x0a, 0x05,
-	0x90, 0x40, 0x0d, 0x37, 0xbd, 0xa5, 0x0e, 0x7f, 0x72, 0xa8, 0xac, 0xa5, 0xe2, 0x7e, 0x71, 0xa6,
-	0xe0, 0x36, 0x64, 0xc3, 0x7a, 0x43, 0xeb, 0x97, 0xec, 0x55, 0x1f, 0xa8, 0xda, 0xf5, 0x6e, 0x08,
-	0x09, 0x55, 0xef, 0xf6, 0xcc, 0x39, 0xe3, 0x9d, 0x39, 0x33, 0x6b, 0x58, 0x93, 0xd3, 0x94, 0x4f,
-	0xb3, 0x83, 0xa9, 0x14, 0x4a, 0x60, 0xbd, 0x44, 0xe1, 0x39, 0x34, 0x63, 0x2a, 0xae, 0xf9, 0x78,
-	0x46, 0xb8, 0x09, 0x95, 0x98, 0x8a, 0xc0, 0xeb, 0x7a, 0xbd, 0x16, 0xd3, 0x47, 0x7c, 0x0d, 0x35,
-	0x43, 0x05, 0xbe, 0x89, 0x95, 0x40, 0x47, 0x4f, 0xc5, 0x6c, 0x32, 0x0a, 0x2a, 0x5d, 0xaf, 0xd7,
-	0x64, 0x25, 0x08, 0x1b, 0x50, 0x3b, 0xb9, 0x9f, 0xaa, 0x22, 0xdc, 0x82, 0x7a, 0x4c, 0x05, 0xa3,
-	0x07, 0x44, 0xa8, 0xc6, 0x54, 0xe4, 0x81, 0xd7, 0xad, 0xf4, 0x5a, 0xcc, 0x9c, 0xc3, 0x3d, 0x68,
-	0x5c, 0x8a, 0x47, 0xd2, 0xf4, 0x5b, 0xf0, 0xe3, 0xa1, 0x21, 0xdb, 0xfd, 0xff, 0x0e, 0x6c, 0x79,
-	0x31, 0x15, 0xc3, 0x2c, 0x57, 0xcc, 0x8f, 0x87, 0x61, 0x04, 0x0d, 0x0b, 0xf1, 0x3d, 0x54, 0x3f,
-	0x8b, 0x11, 0x99, 0xe2, 0xda, 0xfd, 0x4d, 0xa7, 0xd6, 0xb1, 0x4b, 0x52, 0x9c, 0x19, 0x76, 0x7e,
-	0xa1, 0xbf, 0x70, 0xe1, 0x11, 0xb4, 0x9c, 0x2a, 0xc7, 0x1d, 0xa8, 0x99, 0x83, 0xbd, 0x75, 0xf5,
-	0x3b, 0x25, 0x1d, 0xfe, 0xf6, 0xa0, 0xe9, 0x62, 0xb8, 0x01, 0xfe, 0xc5, 0xc0, 0xda, 0xe2, 0x5f,
-	0x0c, 0x30, 0x80, 0xc6, 0xf1, 0x68, 0x24, 0x29, 0xcf, 0xad, 0x2f, 0x0e, 0xe2, 0x36, 0x00, 0x4b,
-	0x22, 0x47, 0x56, 0x0c, 0xb9, 0x10, 0xd1, 0xce, 0x25, 0xe2, 0x07, 0xc9, 0xa0, 0xda, 0xf5, 0x7a,
-	0x1e, 0x2b, 0x01, 0x76, 0xa0, 0x19, 0xf1, 0x29, 0x4f, 0x33, 0x55, 0x04, 0x75, 0x43, 0xcc, 0x31,
-	0xee, 0x42, 0x2d, 0xba, 0xa3, 0xf4, 0x7b, 0xd0, 0x30, 0x8d, 0xbf, 0x72, 0x05, 0x9f, 0x13, 0x1f,
-	0xab, 0x3b, 0x43, 0xb1, 0x52, 0x81, 0xef, 0xa0, 0x72, 0x46, 0x22, 0x68, 0x1a, 0xe1, 0xdc, 0xcf,
-	0x33, 0x12, 0x03, 0xae, 0x38, 0xd3, 0x5c, 0x28, 0xa0, 0xbd, 0x90, 0xa8, 0x1b, 0xf9, 0x92, 0xdd,
-	0x93, 0x98, 0x29, 0xdb, 0x9d, 0x83, 0x78, 0x0a, 0xdb, 0x03, 0x92, 0x74, 0x9b, 0xe5, 0x8a, 0x64,
-	0x24, 0x33, 0x95, 0xa5, 0x7c, 0x7c, 0x45, 0xf2, 0x31, 0x4b, 0xe9, 0xf8, 0xab, 0x22, 0x69, 0x3b,
-	0xff, 0x87, 0x4a, 0x4f, 0xd0, 0x16, 0x80, 0x5b, 0xd0, 0x1a, 0x8a, 0xc9, 0x6d, 0xa6, 0x66, 0x76,
-	0x8c, 0x1e, 0x7b, 0x0a, 0x68, 0x0f, 0x86, 0x5c, 0x95, 0xa4, 0x5f, 0x7a, 0xe0, 0x70, 0xd8, 0x05,
-	0x38, 0xf9, 0x39, 0x1d, 0x0b, 0x49, 0x8c, 0xf2, 0x17, 0x97, 0xea, 0x10, 0x5a, 0x6e, 0x8b, 0x73,
-	0x0c, 0xa1, 0x12, 0x5f, 0xaf, 0x4c, 0xd8, 0xf1, 0x4c, 0x93, 0xe1, 0xce, 0x93, 0xe5, 0xcf, 0xec,
-	0xf7, 0x9e, 0xdb, 0x1f, 0x6e, 0x43, 0x35, 0xc9, 0x26, 0xb7, 0xf8, 0x06, 0xea, 0x7a, 0x1d, 0xe6,
-	0x6b, 0x60, 0x51, 0xff, 0x97, 0x0f, 0x0d, 0x96, 0x44, 0x66, 0xf9, 0xf6, 0xa1, 0xc9, 0x92, 0xe8,
-	0x4a, 0x09, 0x49, 0xb8, 0x72, 0x6d, 0x67, 0xdd, 0x45, 0xcc, 0x23, 0xc1, 0x0f, 0xb0, 0xee, 0xc4,
-	0x09, 0xcf, 0x64, 0x8e, 0xff, 0x2f, 0x67, 0xe4, 0xcb, 0x29, 0x87, 0x66, 0xb9, 0x18, 0xa5, 0x94,
-	0x3d, 0x12, 0x6e, 0x2c, 0xe8, 0x19, 0x3d, 0x74, 0x56, 0xf3, 0x71, 0x0f, 0x5a, 0x26, 0xe1, 0x5e,
-	0xbc, 0xa0, 0x7f, 0xf1, 0xe3, 0xd6, 0x66, 0x7c, 0x4e, 0x76, 0x70, 0x0e, 0x9f, 0xc6, 0xb0, 0x67,
-	0x1a, 0x37, 0xef, 0x63, 0x49, 0xbd, 0xf2, 0xa8, 0x70, 0xb7, 0xd4, 0xea, 0x32, 0xe6, 0x7b, 0x69,
-	0x7f, 0x02, 0x4b, 0x75, 0xf4, 0x3f, 0x42, 0x9b, 0x25, 0xd1, 0xc2, 0xfa, 0xd7, 0x59, 0x12, 0x9d,
-	0x91, 0xfa, 0xeb, 0x25, 0x4e, 0xda, 0xff, 0x66, 0x32, 0x3f, 0xf1, 0x31, 0x9f, 0xa4, 0x24, 0xf1,
-	0xc0, 0x40, 0x66, 0x97, 0x13, 0x57, 0x8a, 0x5a, 0x36, 0x60, 0x1f, 0xd6, 0x58, 0x12, 0x9d, 0x13,
-	0x97, 0xea, 0x86, 0xb8, 0xc2, 0x35, 0x47, 0xeb, 0xf9, 0x2f, 0x89, 0x6f, 0xea, 0xe6, 0x27, 0x7a,
-	0xf4, 0x27, 0x00, 0x00, 0xff, 0xff, 0xd9, 0x8b, 0xb0, 0x5e, 0x54, 0x05, 0x00, 0x00,
+	// 669 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0xdf, 0x6f, 0xd3, 0x40,
+	0x0c, 0x56, 0xfa, 0x2b, 0xa9, 0xdb, 0x01, 0x33, 0x08, 0x45, 0xd5, 0x34, 0x95, 0x08, 0xa6, 0x0e,
+	0x50, 0x11, 0x9d, 0x90, 0x78, 0x1d, 0xe9, 0x7e, 0x54, 0xed, 0x50, 0xb8, 0xa1, 0x3d, 0xf0, 0x76,
+	0x4b, 0xcd, 0x16, 0x68, 0x9b, 0x72, 0xb9, 0x0e, 0xc2, 0xdf, 0xc9, 0x33, 0x7f, 0x0b, 0xba, 0x4b,
+	0xae, 0xed, 0x1a, 0xa6, 0xbd, 0xc5, 0xfe, 0x3e, 0xc7, 0xf6, 0x67, 0xfb, 0xa0, 0x29, 0xe6, 0x21,
+	0x9f, 0x47, 0xdd, 0xb9, 0x88, 0x65, 0x8c, 0xb5, 0xcc, 0xf2, 0xbe, 0x80, 0x33, 0xa4, 0xf4, 0x82,
+	0x4f, 0x16, 0x84, 0x1e, 0x94, 0x87, 0x94, 0xba, 0x56, 0xdb, 0xea, 0x34, 0x7a, 0x8f, 0xba, 0x39,
+	0xbf, 0xcf, 0x25, 0x1f, 0x48, 0x9a, 0x32, 0x05, 0xe2, 0x13, 0xa8, 0x6a, 0xb2, 0x5b, 0x6a, 0x5b,
+	0x9d, 0x26, 0xcb, 0x0c, 0xe5, 0x3d, 0x8e, 0x17, 0xb3, 0xb1, 0x5b, 0x6e, 0x5b, 0x1d, 0x87, 0x65,
+	0x86, 0x67, 0x43, 0xf5, 0x68, 0x3a, 0x97, 0xa9, 0xb7, 0x03, 0xb5, 0x21, 0xa5, 0x8c, 0x7e, 0x20,
+	0x42, 0x65, 0x48, 0x69, 0xe2, 0x5a, 0xed, 0x72, 0xa7, 0xc9, 0xf4, 0xb7, 0xf7, 0x1a, 0xec, 0xb3,
+	0xf8, 0x86, 0x14, 0xfc, 0x0c, 0xca, 0xc3, 0x51, 0x86, 0x36, 0x7a, 0x0f, 0x4d, 0x05, 0x43, 0x4a,
+	0x47, 0x51, 0x22, 0x99, 0xc2, 0xbc, 0x0b, 0xb0, 0x73, 0x1b, 0x9f, 0x43, 0xe5, 0x63, 0x3c, 0xa6,
+	0xcd, 0x82, 0x95, 0xef, 0x8c, 0x24, 0x67, 0x1a, 0xc5, 0x17, 0x79, 0xca, 0x92, 0x66, 0x6d, 0x6f,
+	0xb6, 0x95, 0xe4, 0x55, 0x1c, 0x40, 0xdd, 0x04, 0x26, 0xb8, 0x07, 0x55, 0xfd, 0x91, 0x57, 0x52,
+	0xfc, 0x75, 0x06, 0x7b, 0x7f, 0x2c, 0x70, 0x8c, 0x0f, 0x1f, 0x40, 0x69, 0xd0, 0xd7, 0xc5, 0xd4,
+	0x59, 0x69, 0xd0, 0x47, 0x17, 0xec, 0xc3, 0xf1, 0x58, 0x50, 0x92, 0xe5, 0xae, 0x33, 0x63, 0xe2,
+	0x2e, 0x00, 0x0b, 0x7c, 0x03, 0x96, 0x35, 0xb8, 0xe6, 0x51, 0x72, 0x06, 0xf1, 0x4f, 0x12, 0x6e,
+	0xa5, 0x6d, 0x75, 0x2c, 0x96, 0x19, 0xd8, 0x02, 0xc7, 0xe7, 0x73, 0x1e, 0x46, 0x32, 0x75, 0x6b,
+	0x1a, 0x58, 0xda, 0xb8, 0x0f, 0x55, 0xff, 0x9a, 0xc2, 0xef, 0xae, 0xad, 0xbb, 0x7c, 0x6c, 0x0a,
+	0x3e, 0x25, 0x3e, 0x91, 0xd7, 0x1a, 0x62, 0x19, 0x43, 0x69, 0x7c, 0x42, 0xb1, 0xeb, 0x68, 0xe2,
+	0x52, 0xe3, 0x13, 0x8a, 0x95, 0x22, 0x4c, 0x61, 0x5e, 0x0c, 0x8d, 0xb5, 0x40, 0xd5, 0xc8, 0xe7,
+	0x68, 0x4a, 0xf1, 0x42, 0xe6, 0xdd, 0x19, 0x13, 0x8f, 0x61, 0xb7, 0x4f, 0x82, 0xae, 0xa2, 0x44,
+	0x92, 0xf0, 0x45, 0x24, 0xa3, 0x90, 0x4f, 0xce, 0x49, 0xdc, 0x44, 0x21, 0x1d, 0x7e, 0x95, 0x24,
+	0xf2, 0xce, 0xef, 0x61, 0x79, 0x3e, 0xd8, 0x79, 0x01, 0xb8, 0x03, 0xf5, 0x51, 0x3c, 0xbb, 0x8a,
+	0xe4, 0x22, 0x9f, 0xac, 0xc5, 0x56, 0x0e, 0xa5, 0xc1, 0x88, 0xcb, 0x0c, 0x2c, 0x65, 0x1a, 0x18,
+	0xdb, 0x7b, 0x03, 0x75, 0xb3, 0xca, 0x89, 0xde, 0xe5, 0x8b, 0xc2, 0xfc, 0x0c, 0xce, 0x14, 0xe8,
+	0xed, 0xad, 0x04, 0xbd, 0x25, 0xae, 0x75, 0x5b, 0x5c, 0x6f, 0x17, 0x2a, 0x41, 0x34, 0xbb, 0xc2,
+	0xa7, 0x50, 0x53, 0xc3, 0x5e, 0x0e, 0x39, 0xb7, 0x54, 0xe2, 0xe5, 0x36, 0xa9, 0xc4, 0xfd, 0x41,
+	0x21, 0xf1, 0xea, 0x88, 0xfa, 0x83, 0xc4, 0xfb, 0x04, 0x8e, 0x71, 0xac, 0x6d, 0x4d, 0x53, 0x6f,
+	0x0d, 0x42, 0xe5, 0x3c, 0xfa, 0x9d, 0x75, 0x57, 0x61, 0xfa, 0xdb, 0x8c, 0xac, 0x7c, 0xf7, 0xc8,
+	0x7a, 0x7f, 0x4b, 0x60, 0xb3, 0xc0, 0xd7, 0x1b, 0xdf, 0x05, 0x87, 0x05, 0xfe, 0xb9, 0x8c, 0x05,
+	0x61, 0xa1, 0xf5, 0x56, 0xa1, 0x26, 0x7c, 0x07, 0x5b, 0x86, 0x1f, 0xf0, 0x48, 0x24, 0xb8, 0xbd,
+	0x19, 0x94, 0xb4, 0x8a, 0x77, 0x83, 0x3d, 0xbd, 0xc5, 0x8c, 0x42, 0x8a, 0x6e, 0x08, 0x8b, 0x84,
+	0x56, 0xf1, 0x37, 0xf8, 0x16, 0xea, 0x3a, 0x66, 0x1a, 0xdf, 0x13, 0xb2, 0x4a, 0xd3, 0xd5, 0x69,
+	0x8e, 0x7e, 0xcd, 0x27, 0xaa, 0x9f, 0x2d, 0x43, 0xd0, 0x2f, 0xcb, 0xff, 0xf8, 0x2f, 0xb5, 0x10,
+	0xfa, 0x22, 0x37, 0xc8, 0x85, 0x33, 0xc6, 0xfd, 0x8c, 0xab, 0x8a, 0x59, 0xca, 0x9a, 0xbf, 0x45,
+	0xad, 0xdb, 0xc1, 0xbd, 0xf7, 0xd0, 0x60, 0x81, 0xbf, 0x76, 0x70, 0x35, 0x16, 0xf8, 0x27, 0x24,
+	0xef, 0x4c, 0x62, 0xa8, 0xbd, 0x6f, 0x3a, 0xf2, 0x03, 0x9f, 0xf0, 0x59, 0x48, 0x02, 0xbb, 0xda,
+	0x64, 0xf9, 0x39, 0x60, 0xa1, 0xa8, 0x8d, 0xc4, 0xf8, 0x0a, 0x9a, 0x2c, 0xf0, 0x4f, 0x89, 0x0b,
+	0x79, 0x49, 0x5c, 0x62, 0xd3, 0xc0, 0x6a, 0x27, 0x37, 0xc8, 0x97, 0x35, 0xfd, 0xba, 0x1f, 0xfc,
+	0x0b, 0x00, 0x00, 0xff, 0xff, 0x85, 0x76, 0xee, 0x66, 0xed, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -686,11 +745,11 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type RPCNodeClient interface {
-	RPCStore(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*Empty, error)
-	RPCStorePairs(ctx context.Context, in *KeyValues, opts ...grpc.CallOption) (*Empty, error)
-	RPCReceive(ctx context.Context, in *KeyReq, opts ...grpc.CallOption) (*KeyValues, error)
-	RPCRemove(ctx context.Context, in *KeyReq, opts ...grpc.CallOption) (*Empty, error)
-	RPCExplore(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*ExploreRes, error)
+	RPCStore(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*DataItem, error)
+	RPCStorePairs(ctx context.Context, in *KeyValues, opts ...grpc.CallOption) (*DataItems, error)
+	RPCReceive(ctx context.Context, in *DataItems, opts ...grpc.CallOption) (*KeyValues, error)
+	RPCRemove(ctx context.Context, in *DataItems, opts ...grpc.CallOption) (*DataItems, error)
+	RPCExplore(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DataItems, error)
 	RPCMeta(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*NodeMeta, error)
 	RPCMove(ctx context.Context, in *MoveReq, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -703,8 +762,8 @@ func NewRPCNodeClient(cc grpc.ClientConnInterface) RPCNodeClient {
 	return &rPCNodeClient{cc}
 }
 
-func (c *rPCNodeClient) RPCStore(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
+func (c *rPCNodeClient) RPCStore(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*DataItem, error) {
+	out := new(DataItem)
 	err := c.cc.Invoke(ctx, "/rpcapi.RPCNode/RPCStore", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -712,8 +771,8 @@ func (c *rPCNodeClient) RPCStore(ctx context.Context, in *KeyValue, opts ...grpc
 	return out, nil
 }
 
-func (c *rPCNodeClient) RPCStorePairs(ctx context.Context, in *KeyValues, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
+func (c *rPCNodeClient) RPCStorePairs(ctx context.Context, in *KeyValues, opts ...grpc.CallOption) (*DataItems, error) {
+	out := new(DataItems)
 	err := c.cc.Invoke(ctx, "/rpcapi.RPCNode/RPCStorePairs", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -721,7 +780,7 @@ func (c *rPCNodeClient) RPCStorePairs(ctx context.Context, in *KeyValues, opts .
 	return out, nil
 }
 
-func (c *rPCNodeClient) RPCReceive(ctx context.Context, in *KeyReq, opts ...grpc.CallOption) (*KeyValues, error) {
+func (c *rPCNodeClient) RPCReceive(ctx context.Context, in *DataItems, opts ...grpc.CallOption) (*KeyValues, error) {
 	out := new(KeyValues)
 	err := c.cc.Invoke(ctx, "/rpcapi.RPCNode/RPCReceive", in, out, opts...)
 	if err != nil {
@@ -730,8 +789,8 @@ func (c *rPCNodeClient) RPCReceive(ctx context.Context, in *KeyReq, opts ...grpc
 	return out, nil
 }
 
-func (c *rPCNodeClient) RPCRemove(ctx context.Context, in *KeyReq, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
+func (c *rPCNodeClient) RPCRemove(ctx context.Context, in *DataItems, opts ...grpc.CallOption) (*DataItems, error) {
+	out := new(DataItems)
 	err := c.cc.Invoke(ctx, "/rpcapi.RPCNode/RPCRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -739,8 +798,8 @@ func (c *rPCNodeClient) RPCRemove(ctx context.Context, in *KeyReq, opts ...grpc.
 	return out, nil
 }
 
-func (c *rPCNodeClient) RPCExplore(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*ExploreRes, error) {
-	out := new(ExploreRes)
+func (c *rPCNodeClient) RPCExplore(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DataItems, error) {
+	out := new(DataItems)
 	err := c.cc.Invoke(ctx, "/rpcapi.RPCNode/RPCExplore", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -768,11 +827,11 @@ func (c *rPCNodeClient) RPCMove(ctx context.Context, in *MoveReq, opts ...grpc.C
 
 // RPCNodeServer is the server API for RPCNode service.
 type RPCNodeServer interface {
-	RPCStore(context.Context, *KeyValue) (*Empty, error)
-	RPCStorePairs(context.Context, *KeyValues) (*Empty, error)
-	RPCReceive(context.Context, *KeyReq) (*KeyValues, error)
-	RPCRemove(context.Context, *KeyReq) (*Empty, error)
-	RPCExplore(context.Context, *Empty) (*ExploreRes, error)
+	RPCStore(context.Context, *KeyValue) (*DataItem, error)
+	RPCStorePairs(context.Context, *KeyValues) (*DataItems, error)
+	RPCReceive(context.Context, *DataItems) (*KeyValues, error)
+	RPCRemove(context.Context, *DataItems) (*DataItems, error)
+	RPCExplore(context.Context, *Empty) (*DataItems, error)
 	RPCMeta(context.Context, *Empty) (*NodeMeta, error)
 	RPCMove(context.Context, *MoveReq) (*Empty, error)
 }
@@ -781,19 +840,19 @@ type RPCNodeServer interface {
 type UnimplementedRPCNodeServer struct {
 }
 
-func (*UnimplementedRPCNodeServer) RPCStore(ctx context.Context, req *KeyValue) (*Empty, error) {
+func (*UnimplementedRPCNodeServer) RPCStore(ctx context.Context, req *KeyValue) (*DataItem, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCStore not implemented")
 }
-func (*UnimplementedRPCNodeServer) RPCStorePairs(ctx context.Context, req *KeyValues) (*Empty, error) {
+func (*UnimplementedRPCNodeServer) RPCStorePairs(ctx context.Context, req *KeyValues) (*DataItems, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCStorePairs not implemented")
 }
-func (*UnimplementedRPCNodeServer) RPCReceive(ctx context.Context, req *KeyReq) (*KeyValues, error) {
+func (*UnimplementedRPCNodeServer) RPCReceive(ctx context.Context, req *DataItems) (*KeyValues, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCReceive not implemented")
 }
-func (*UnimplementedRPCNodeServer) RPCRemove(ctx context.Context, req *KeyReq) (*Empty, error) {
+func (*UnimplementedRPCNodeServer) RPCRemove(ctx context.Context, req *DataItems) (*DataItems, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCRemove not implemented")
 }
-func (*UnimplementedRPCNodeServer) RPCExplore(ctx context.Context, req *Empty) (*ExploreRes, error) {
+func (*UnimplementedRPCNodeServer) RPCExplore(ctx context.Context, req *Empty) (*DataItems, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RPCExplore not implemented")
 }
 func (*UnimplementedRPCNodeServer) RPCMeta(ctx context.Context, req *Empty) (*NodeMeta, error) {
@@ -844,7 +903,7 @@ func _RPCNode_RPCStorePairs_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 func _RPCNode_RPCReceive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(KeyReq)
+	in := new(DataItems)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -856,13 +915,13 @@ func _RPCNode_RPCReceive_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/rpcapi.RPCNode/RPCReceive",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RPCNodeServer).RPCReceive(ctx, req.(*KeyReq))
+		return srv.(RPCNodeServer).RPCReceive(ctx, req.(*DataItems))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RPCNode_RPCRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(KeyReq)
+	in := new(DataItems)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -874,7 +933,7 @@ func _RPCNode_RPCRemove_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/rpcapi.RPCNode/RPCRemove",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RPCNodeServer).RPCRemove(ctx, req.(*KeyReq))
+		return srv.(RPCNodeServer).RPCRemove(ctx, req.(*DataItems))
 	}
 	return interceptor(ctx, in, info, handler)
 }

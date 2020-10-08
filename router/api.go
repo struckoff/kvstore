@@ -1,15 +1,17 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"unsafe"
@@ -22,49 +24,44 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 	r.POST("/put/:key", h.Store)
 	r.GET("/get/*key", h.Receive)
 	r.GET("/list", h.Explore)
+	r.GET("/cid", h.Cid)
 	r.GET("/config", h.Config)
-	r.OPTIONS("/config/log/enable", h.EnableLog)
-	r.OPTIONS("/config/log/disable", h.DisableLog)
-	r.OPTIONS("/optimize", h.Optimize)
+	//r.OPTIONS("/config/log/enable", h.EnableLog)
+	//r.OPTIONS("/config/log/disable", h.DisableLog)
+	r.OPTIONS("/optimize", h.CallOptimize)
 	return r
 }
 
-func (h *Router) EnableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	msg := "logs enabled"
-	log.SetOutput(os.Stdout)
-	log.Println(msg)
-	if _, err := w.Write([]byte(msg)); err != nil {
-		log.Println(err)
-	}
-}
+//func (h *Router) EnableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+//	msg := "logs enabled"
+//	log.SetOutput(os.Stdout)
+//	log.Println(msg)
+//	if _, err := w.Write([]byte(msg)); err != nil {
+//		log.Println(err)
+//	}
+//}
+//
+//func (h *Router) DisableLog(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+//	msg := "logs disabled"
+//	log.Println(msg)
+//	log.SetOutput(ioutil.Discard)
+//	if _, err := w.Write([]byte(msg)); err != nil {
+//		log.Println(err)
+//	}
+//}
 
-func (h *Router) DisableLog(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	msg := "logs disabled"
-	log.Println(msg)
-	log.SetOutput(ioutil.Discard)
-	if _, err := w.Write([]byte(msg)); err != nil {
-		log.Println(err)
-	}
-}
-
-func (h *Router) Optimize(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	log.Println("optimize started")
-	if err := h.bal.Optimize(); err != nil {
+func (h *Router) CallOptimize(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	if err := h.Optimize(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(err.Error())
-		return
+		logger.Logger().Error("optimizer error", zap.Error(err))
 	}
-	if err := h.redistributeKeys(); err != nil {
-		log.Printf("Error redistributing keys: %s", err.Error())
-		return
+
+	if _, err := w.Write([]byte("Optimize complete")); err != nil {
+		logger.Logger().Error("optimizer error", zap.Error(err))
 	}
-	if _, err := w.Write([]byte("optimize complete")); err != nil {
-		log.Println(err)
-	}
-	log.Println("optimize complete")
 }
 
-func (h *Router) Config(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Config(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	if err := json.NewEncoder(w).Encode(h.conf); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -77,29 +74,51 @@ func (h *Router) Store(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 		defer r.Body.Close()
 	}
 	key := ps.ByName("key")
-	n, err := h.LocateKey(key)
+
+	var uploaded = false
+	defer func() {
+		if !uploaded {
+			if err := h.RemoveData(key); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+		if _, err := fmt.Fprint(w, "OK"); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}()
+
+	di, err := h.ndf(key, 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	n, cID, err := h.bal.LocateData(di)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := n.Store(key, b); err != nil {
+	kv := &rpcapi.KeyValue{
+		Key:   di.RPCApi(),
+		Value: b,
+	}
+	rdi, err := n.Store(kv)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := fmt.Fprint(w, "OK"); err != nil {
+	di = h.rpcndf(rdi)
+	if err := h.AddData(cID, di); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := h.AddData(key); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	uploaded = true
 }
 
 //Receive value for a given key from the remote node
@@ -116,35 +135,40 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	}
 
 	kvsCh := make(chan *rpcapi.KeyValues, len(nmk))
-	for n, keys := range nmk {
-		func(n nodes.Node, keys []string, kvsCh chan<- *rpcapi.KeyValues) {
+	for n, dis := range nmk {
+		go func(n nodes.Node, dis []*rpcapi.DataItem, kvsCh chan<- *rpcapi.KeyValues) {
 			var kvs *rpcapi.KeyValues
 			defer func() {
 				kvsCh <- kvs
 			}()
-			kvs, err = n.Receive(keys)
+			kvs, err = n.Receive(dis)
 			if err != nil {
-				log.Print(err)
+				logger.Logger().Error("recieve error", zap.Error(err))
 				return
 			}
-		}(n, keys, kvsCh)
+		}(n, dis, kvsCh)
+	}
+	type rec struct {
+		Key   string
+		Value string
 	}
 
-	var resp rpcapi.KeyValues
-	resp.KVs = make([]*rpcapi.KeyValue, 0)
-	for iter := 0; iter < len(nmk); iter++ {
+	//var resp rpcapi.KeyValues
+	//resp.KVs = make([]*rpcapi.KeyValue, 0)
+	resp := make([]rec, 0)
+	for i := 0; i < len(nmk); i++ {
 		kvs := <-kvsCh
 		if kvs == nil {
 			continue
 		}
 		for _, kv := range kvs.KVs {
 			if kv.Found {
-				resp.KVs = append(resp.KVs, kv)
+				resp = append(resp, rec{string(kv.Key.ID), string(kv.Value)})
 			}
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(resp.KVs); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -154,20 +178,26 @@ func byteSlice2String(bs []byte) string {
 	return *(*string)(unsafe.Pointer(&bs))
 }
 
-func (h *Router) keysOnNodes(keys []string) (map[nodes.Node][]string, error) {
-	nmk := make(map[nodes.Node][]string)
-	for iter := range keys {
-		n, err := h.LocateKey(keys[iter])
+func (h *Router) keysOnNodes(keys []string) (map[nodes.Node][]*rpcapi.DataItem, error) {
+	nmk := make(map[nodes.Node][]*rpcapi.DataItem)
+	for i := range keys {
+		di, err := h.ndf(keys[i], 0)
 		if err != nil {
 			return nil, err
 		}
-		nmk[n] = append(nmk[n], keys[iter])
+		n, _, err := h.bal.LocateData(di)
+		if err != nil {
+			return nil, err
+		}
+		nmk[n] = append(nmk[n], di.RPCApi())
 	}
 	return nmk, nil
 }
 
 //Explore returns a list of keys on nodes
-func (h *Router) Explore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Explore(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	h.opLock.Lock()
+	defer h.opLock.Unlock()
 	res, err := h.nodeKeys()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -184,8 +214,78 @@ func (h *Router) Explore(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	}
 }
 
+func (h *Router) cidToKeys() (*SyncMap, error) {
+	sm := NewSyncMap()
+	ns, err := h.bal.Nodes()
+	if err != nil {
+		return nil, err
+	}
+
+	eg, ectx := errgroup.WithContext(context.Background())
+	for _, n := range ns {
+		eg.Go(h.cidToKeysNode(n, sm, ectx))
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return sm, nil
+}
+
+func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) func() error {
+	return func() (err error) {
+		var rdis []*rpcapi.DataItem
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			rdis, err = n.Explore()
+			if err != nil {
+				return err
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				for i := range rdis {
+					select {
+					case <-ctx.Done():
+						return nil
+					default:
+						di := h.rpcndf(rdis[i])
+						_, cid, err := h.bal.LocateData(di)
+						if err != nil {
+							return err
+						}
+						k := fmt.Sprintf("%d", cid)
+						sm.Append(k, string(rdis[i].ID))
+					}
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func (h *Router) Cid(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	sm, err := h.cidToKeys()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	b, err := sm.JsonMarshal()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write(b); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+}
+
 // Nodes returns a list of nodes
-func (h *Router) Nodes(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Router) Nodes(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	metas, err := h.nodes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -202,8 +302,8 @@ func (h *Router) nodes() ([]*rpcapi.NodeMeta, error) {
 		return nil, err
 	}
 	metas := make([]*rpcapi.NodeMeta, len(ns))
-	for iter, n := range ns {
-		metas[iter] = n.Meta()
+	for i, n := range ns {
+		metas[i] = n.Meta()
 	}
 	return metas, nil
 }
@@ -219,14 +319,39 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, n nodes.Node, sm *SyncMap) {
 			defer wg.Done()
-			keys, err := n.Explore()
+			dis, err := n.Explore()
 			if err != nil {
-				log.Printf("%s: %s", n.ID(), err.Error())
+				logger.Logger().Error("node keys error", zap.String("Node", n.ID()), zap.Error(err))
 				return
+			}
+			keys := make([]string, len(dis))
+			for i := range keys {
+				keys[i] = string(dis[i].ID)
 			}
 			sm.Put(n.ID(), keys)
 		}(&wg, n, res)
 	}
 	wg.Wait()
 	return res, nil
+}
+
+func (h *Router) Optimize() error {
+	h.opLock.Lock()
+	defer h.opLock.Unlock()
+	return h.optimize()
+}
+
+func (h *Router) optimize() error {
+	logger.Logger().Info("Optimize started")
+	if err := h.fillBalancer(); err != nil {
+		return err
+	}
+	if err := h.bal.Optimize(); err != nil {
+		return err
+	}
+	if err := h.redistributeKeys(); err != nil {
+		return err
+	}
+	logger.Logger().Info("Optimize complete")
+	return nil
 }

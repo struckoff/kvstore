@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"github.com/influxdata/influxdb-client-go"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
-	"log"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/keepalive"
 	"net"
 	"time"
 
@@ -21,34 +23,22 @@ func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	if err != nil {
 		return err
 	}
-	inn.rpcserver = grpc.NewServer()
+	inn.rpcserver = grpc.NewServer(
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute,
+		}),
+	)
 	rpcapi.RegisterRPCNodeServer(inn.rpcserver, inn)
 	rpcapi.RegisterRPCCapacityServer(inn.rpcserver, &inn.c)
 
 	go func(errCh chan<- error) {
 		errCh <- inn.rpcserver.Serve(inbound)
 	}(errCh)
-	//if err := checkTCP(inbound.Addr().String()); err != nil {
-	//	return err
-	//}
-	log.Printf("RPC server listening on %s", inbound.Addr().String())
-
-	//if err := inn.rpcserver.Serve(inbound); err != nil {
-	//	return err
-	//}
-
+	logger.Logger().Info("RPC server listening", zap.String("Address", inbound.Addr().String()))
 	return nil
 }
 
-//func checkTCP(addr string) error {
-//	_, err := net.Dial("tcp", addr)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-
-func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (r *rpcapi.Empty, err error) {
+func (inn *LocalNode) RPCStore(_ context.Context, in *rpcapi.KeyValue) (r *rpcapi.DataItem, err error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -67,13 +57,10 @@ func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (r *rpc
 	}()
 
 	time.Sleep(inn.rpclatency)
-	if err := inn.Store(in.Key, []byte(in.Value)); err != nil {
-		return nil, err
-	}
-	return &rpcapi.Empty{}, nil
+	return inn.Store(in)
 }
 
-func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCStorePairs(_ context.Context, in *rpcapi.KeyValues) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -91,15 +78,15 @@ func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (
 		inn.metrics <- p
 	}()
 
-	log.Println("Receive keys")
 	time.Sleep(inn.rpclatency)
-	if err := inn.StorePairs(in.KVs); err != nil {
+	dis, err := inn.StorePairs(in.KVs)
+	if err != nil {
 		return nil, err
 	}
-	return &rpcapi.Empty{}, nil
+	return &rpcapi.DataItems{DIs: dis}, nil
 }
 
-func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.KeyValues, error) {
+func (inn *LocalNode) RPCReceive(_ context.Context, in *rpcapi.DataItems) (*rpcapi.KeyValues, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -118,10 +105,10 @@ func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.KeyReq) (*rpcap
 	}()
 
 	time.Sleep(inn.rpclatency)
-	return inn.Receive(in.Keys)
+	return inn.Receive(in.DIs)
 }
 
-func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCRemove(_ context.Context, in *rpcapi.DataItems) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -140,13 +127,15 @@ func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.KeyReq) (*rpcapi
 	}()
 
 	time.Sleep(inn.rpclatency)
-	if err := inn.Remove(in.Keys); err != nil {
+	dis, err := inn.Remove(in.DIs)
+	if err != nil {
 		return nil, err
 	}
-	return &rpcapi.Empty{}, nil
+	ds := &rpcapi.DataItems{DIs: dis}
+	return ds, nil
 }
 
-func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi.ExploreRes, error) {
+func (inn *LocalNode) RPCExplore(_ context.Context, _ *rpcapi.Empty) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -165,13 +154,13 @@ func (inn *LocalNode) RPCExplore(ctx context.Context, in *rpcapi.Empty) (*rpcapi
 	}()
 
 	time.Sleep(inn.rpclatency)
-	keys, err := inn.Explore()
+	dis, err := inn.Explore()
 	if err != nil {
 		return nil, err
 	}
-	return &rpcapi.ExploreRes{Keys: keys}, nil
+	return &rpcapi.DataItems{DIs: dis}, nil
 }
-func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
+func (inn *LocalNode) RPCMeta(_ context.Context, _ *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -194,31 +183,31 @@ func (inn *LocalNode) RPCMeta(ctx context.Context, in *rpcapi.Empty) (*rpcapi.No
 	return meta, nil
 }
 
-func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
-	start := time.Now()
-	defer func() {
-		end := time.Since(start)
-		now := time.Now()
-
-		p := influxdb2.NewPoint("grpc",
-			map[string]string{
-				"id":     inn.id,
-				"method": "move",
-			},
-			map[string]interface{}{
-				"duration_ms": end.Milliseconds(),
-			},
-			now)
-		inn.metrics <- p
-	}()
+func (inn *LocalNode) RPCMove(_ context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
+	//start := time.Now()
+	//defer func() {
+	//	end := time.Since(start)
+	//	now := time.Now()
+	//
+	//	p := influxdb2.NewPoint("grpc",
+	//		map[string]string{
+	//			"id":     inn.id,
+	//			"method": "move",
+	//		},
+	//		map[string]interface{}{
+	//			"duration_ms": end.Milliseconds(),
+	//		},
+	//		now)
+	//	inn.metrics <- p
+	//}()
 
 	time.Sleep(inn.rpclatency)
 
 	var en nodes.Node
 	var err error
 
-	res := make(map[nodes.Node][]string)
-	for _, kl := range in.KL {
+	res := make(map[nodes.Node][]*rpcapi.DataItem)
+	for _, kl := range in.KLs {
 		if inn.kvr != nil {
 			en, err = inn.kvr.GetNode(kl.Node.ID)
 		} else {
@@ -227,7 +216,7 @@ func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.
 		if err != nil {
 			return nil, err
 		}
-		res[en] = kl.Keys
+		res[en] = kl.Keys.DIs
 	}
 	if err := inn.Move(res); err != nil {
 		return nil, err

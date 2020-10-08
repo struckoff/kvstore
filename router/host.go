@@ -2,13 +2,14 @@ package router
 
 import (
 	"context"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/balanceradapter"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/nodes"
-	"log"
+	"github.com/struckoff/sfcframework/curve"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -50,7 +51,11 @@ func NewHost(conf *config.Config) (*Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	kvr, err := NewRouter(bal, hr, ndf, conf.Balancer)
+	rpcndf, err := dataitem.GetDataItemFromRpcFunc(conf.Balancer.DataMode)
+	if err != nil {
+		return nil, err
+	}
+	kvr, err := NewRouter(bal, hr, ndf, rpcndf, conf.Balancer)
 	if err != nil {
 		return nil, err
 	}
@@ -68,39 +73,28 @@ type Host struct {
 	httplatency time.Duration
 }
 
-func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
+func (h *Host) RPCRegister(_ context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
 	en, err := nodes.NewExternalNode(in, h.kvr.Hasher())
 	if err != nil {
-		return nil, err
+		logger.Logger().Error("Error registering node", zap.Error(err))
+		return nil, errors.Wrap(err, "failed to create external node")
 	}
 
 	onDead := onDeadHandler(en.ID())
 	onRemove := h.onRemoveHandler(en.ID())
 	check, err := ttl.NewTTLCheck(in.Check, onDead, onRemove)
 	if err != nil {
-		return nil, err
+		logger.Logger().Error("Error registering check", zap.String("Node", en.ID()), zap.Error(err))
+		return nil, errors.Wrap(err, "failed to create ttl check")
 	}
 	h.checks.Store(en.ID(), check)
 	if err := h.kvr.AddNode(en); err != nil {
-		return nil, err
-	}
-	keys, err := en.Explore()
-	if err != nil {
-		return nil, err
-	}
-	for _, key := range keys {
-		_, err := h.kvr.LocateKey(key)
-		if err != nil {
-			return nil, err
-		}
-	}
-	log.Printf("node(%s) registered", en.ID())
-	if err := h.kvr.redistributeKeys(); err != nil {
-		return nil, err
+		logger.Logger().Error("Error adding node", zap.String("Node", en.ID()), zap.Error(err))
+		return nil, errors.Wrap(err, "failed to addNode")
 	}
 	return &rpcapi.Empty{}, nil
 }
-func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty, error) {
+func (h *Host) RPCHeartbeat(_ context.Context, in *rpcapi.Ping) (*rpcapi.Empty, error) {
 	if ok := h.checks.Update(in.NodeID); !ok {
 		return nil, errors.Errorf("unable to find check for node(%s)", in.NodeID)
 	}
@@ -108,7 +102,7 @@ func (h *Host) RPCHeartbeat(ctx context.Context, in *rpcapi.Ping) (*rpcapi.Empty
 }
 func (h *Host) RunHTTPServer(addr string) error {
 	r := h.kvr.HTTPHandler()
-	log.Printf("Run server [%s]", addr)
+	logger.Logger().Info("Run server", zap.String("address", addr))
 	l := LatencyMiddleware(r, h.httplatency)
 	if err := http.ListenAndServe(addr, l); err != nil {
 		return err
@@ -118,51 +112,20 @@ func (h *Host) RunHTTPServer(addr string) error {
 
 func onDeadHandler(nodeID string) func() {
 	return func() {
-		log.Printf("node(%s) seems to be dead", nodeID)
+		logger.Logger().Warn("node seems to be dead", zap.String("Node", nodeID))
 	}
 }
 func (h *Host) onRemoveHandler(nodeID string) func() {
 	return func() {
 		if err := h.kvr.RemoveNode(nodeID); err != nil {
-			log.Printf("Error removing node(%s): %s", nodeID, err.Error())
+			logger.Logger().Error("Error removing node", zap.String("Node", nodeID), zap.Error(err))
 			return
 		}
-		if err := h.kvr.redistributeKeys(); err != nil {
-			log.Printf("Error redistributing keys: %s", err.Error())
+		if err := h.kvr.Optimize(); err != nil {
+			logger.Logger().Error("Error redistributing keys", zap.Error(err))
 			return
 		}
 		h.checks.Delete(nodeID)
-		log.Printf("node(%s) removed", nodeID)
+		logger.Logger().Info("node removed", zap.String("Node", nodeID))
 	}
 }
-
-//func (h *Host) redistributeKeys() error {
-//	var wg sync.WaitGroup
-//	ns, err := h.kvr.GetNodes()
-//	if err != nil {
-//		return err
-//	}
-//	for _, n := range ns {
-//		go func(n nodes.Node, wg *sync.WaitGroup) {
-//			res := make(map[nodes.Node][]string)
-//			keys, err := n.Explore()
-//			if err != nil {
-//				log.Printf("failed to explore node(%s): %s", n.ID(), err.Error())
-//				return
-//			}
-//			for iter := range keys {
-//				en, err := h.kvr.LocateKey(keys[iter])
-//				if err != nil {
-//					log.Printf("failed to locate key(%s): %s", keys[iter], err.Error())
-//					continue
-//				}
-//				if en.ID() != n.ID() {
-//					res[en] = append(res[en], keys[iter])
-//				}
-//			}
-//			n.Move(res)
-//		}(n, &wg)
-//	}
-//	wg.Wait()
-//	return nil
-//}

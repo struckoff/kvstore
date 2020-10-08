@@ -1,95 +1,26 @@
 package store
 
 import (
+	"errors"
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go"
+	consulapi "github.com/hashicorp/consul/api"
+	"github.com/influxdata/influxdb-client-go/api/write"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/struckoff/kvstore/mocks"
+	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/nodes"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	bolt "go.etcd.io/bbolt"
 	"io/ioutil"
+	"log"
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
-
-	balancer "github.com/struckoff/SFCFramework"
-	"github.com/struckoff/kvstore/router/rpcapi"
-	bolt "go.etcd.io/bbolt"
 )
-
-func TestNewInternalNode(t *testing.T) {
-	type args struct {
-		id    string
-		addr  string
-		raddr string
-		p     float64
-		c     float64
-		db    *bolt.DB
-		bConf config.BalancerConfig
-	}
-	tests := []struct {
-		name string
-		args args
-		want *LocalNode
-	}{
-		{
-			name: "test",
-			args: args{
-				id:    "test_id",
-				addr:  "test_addr",
-				raddr: "test_raddr",
-				p:     1.1,
-				c:     2.3,
-				db:    &bolt.DB{},
-				bConf: config.BalancerConfig{
-					Latency: config.Duration{
-						Duration: 0,
-					},
-				},
-			},
-			want: &LocalNode{
-				id:         "test_id",
-				address:    "test_addr",
-				rpcaddress: "test_raddr",
-				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
-				db:         &bolt.DB{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			conf := &Config{
-				Name:       &tt.args.id,
-				Address:    tt.args.addr,
-				RPCAddress: tt.args.raddr,
-				Power:      tt.args.p,
-				Capacity:   tt.args.c,
-				Balancer:   &tt.args.bConf,
-			}
-			metrics := make(chan *influxdb2.Point)
-			defer close(metrics)
-			go func(metrics chan *influxdb2.Point) {
-				for m := range metrics {
-					if m == nil {
-						fmt.Println("closed")
-						return
-					}
-					continue
-				}
-			}(metrics)
-			got, _ := NewLocalNode(conf, tt.args.db, nil, metrics)
-			assert.Equal(t, tt.want.id, got.id)
-			assert.Equal(t, tt.want.rpcserver, got.rpcserver)
-			assert.Equal(t, tt.want.consul, got.consul)
-			assert.Equal(t, tt.want.kvr, got.kvr)
-			assert.Equal(t, tt.want.db, got.db)
-			//if !reflect.DeepEqual(, ) {
-			//	t.Errorf("NewLocalNode() = %v, want %v", got, tt.want)
-			//}
-		})
-	}
-}
 
 func TestInternalNode_Meta(t *testing.T) {
 	type fields struct {
@@ -97,7 +28,7 @@ func TestInternalNode_Meta(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -112,7 +43,7 @@ func TestInternalNode_Meta(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: &rpcapi.NodeMeta{
@@ -136,53 +67,35 @@ func TestInternalNode_Meta(t *testing.T) {
 			}
 			got := n.Meta()
 			assert.Equal(t, tt.want, got)
-			//if got := n.Meta(); !reflect.DeepEqual(got, tt.want) {
-			//	t.Errorf("Meta() = %v, want %v", got, tt.want)
-			//}
 		})
 	}
 }
 
 func TestInternalNode_Capacity(t *testing.T) {
 	type fields struct {
-		id         string
-		address    string
-		rpcaddress string
-		p          nodes.Power
-		c          nodes.Capacity
-		db         *bolt.DB
+		c Capacity
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   balancer.Capacity
+		want   Capacity
 	}{
 		{
 			name: "test",
 			fields: fields{
-				id:         "test_id",
-				address:    "test_addr",
-				rpcaddress: "test_raddr",
-				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
-				db:         nil,
+				c: NewCapacity(2.3),
 			},
-			want: nodes.NewCapacity(2.3),
+			want: NewCapacity(2.3),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := &LocalNode{
-				id:         tt.fields.id,
-				address:    tt.fields.address,
-				rpcaddress: tt.fields.rpcaddress,
-				p:          tt.fields.p,
-				c:          tt.fields.c,
-				db:         tt.fields.db,
+				c: tt.fields.c,
 			}
-			if got := n.Capacity(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Capacity() = %v, want %v", got, tt.want)
-			}
+
+			got := n.Capacity()
+			assert.Equal(t, &tt.want, got)
 		})
 	}
 }
@@ -193,7 +106,7 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -208,7 +121,7 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_addr",
@@ -224,9 +137,8 @@ func TestInternalNode_HTTPAddress(t *testing.T) {
 				c:          tt.fields.c,
 				db:         tt.fields.db,
 			}
-			if got := n.HTTPAddress(); got != tt.want {
-				t.Errorf("HTTPAddress() = %v, want %v", got, tt.want)
-			}
+			got := n.HTTPAddress()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -237,7 +149,7 @@ func TestInternalNode_ID(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -252,7 +164,7 @@ func TestInternalNode_ID(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_id",
@@ -281,13 +193,13 @@ func TestInternalNode_Power(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   balancer.Power
+		want   nodes.Power
 	}{
 		{
 			name: "test",
@@ -296,7 +208,7 @@ func TestInternalNode_Power(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: nodes.NewPower(1.1),
@@ -325,7 +237,7 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 		address    string
 		rpcaddress string
 		p          nodes.Power
-		c          nodes.Capacity
+		c          Capacity
 		db         *bolt.DB
 	}
 	tests := []struct {
@@ -340,7 +252,7 @@ func TestInternalNode_RPCAddress(t *testing.T) {
 				address:    "test_addr",
 				rpcaddress: "test_raddr",
 				p:          nodes.NewPower(1.1),
-				c:          nodes.NewCapacity(2.3),
+				c:          NewCapacity(2.3),
 				db:         nil,
 			},
 			want: "test_raddr",
@@ -369,8 +281,8 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 		val []byte
 	}
 	type args struct {
-		kvs        []kv
-		removeKeys []string
+		kvs        []*rpcapi.KeyValue
+		removeKeys []*rpcapi.DataItem
 	}
 	tests := []struct {
 		name                    string
@@ -384,30 +296,30 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 		{
 			name: "test",
 			args: args{
-				kvs: []kv{
-					{"t0", []byte("t0val")},
-					{"t1", []byte("t1val")},
-					{"t2", []byte("t2val")},
-					{"t3", []byte("t3val")},
-					{"t4", []byte("t4val")},
+				kvs: []*rpcapi.KeyValue{
+					{Key: &rpcapi.DataItem{ID: []byte("t0")}, Value: []byte("t0val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t2")}, Value: []byte("t2val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t3")}, Value: []byte("t3val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
-				removeKeys: []string{"t0", "t2", "t3"},
+				removeKeys: []*rpcapi.DataItem{{ID: []byte("t0")}, {ID: []byte("t2")}, {ID: []byte("t3")}},
 			},
 			wantErr: false,
 			wantBeforeRemove: &rpcapi.KeyValues{
 				KVs: []*rpcapi.KeyValue{
-					{Key: "t0", Value: "t0val", Found: true},
-					{Key: "t1", Value: "t1val", Found: true},
-					{Key: "t2", Value: "t2val", Found: true},
-					{Key: "t3", Value: "t3val", Found: true},
-					{Key: "t4", Value: "t4val", Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t0")}, Value: []byte("t0val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t2")}, Value: []byte("t2val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t3")}, Value: []byte("t3val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
 			},
 			wantExploreBeforeRemove: []string{"t0", "t1", "t2", "t3", "t4"},
 			wantAfterRemove: &rpcapi.KeyValues{
 				KVs: []*rpcapi.KeyValue{
-					{Key: "t1", Value: "t1val", Found: true},
-					{Key: "t4", Value: "t4val", Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
 			},
 			wantExploreAfterRemove: []string{"t1", "t4"},
@@ -415,33 +327,33 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 		{
 			name: "remove not existing key",
 			args: args{
-				kvs: []kv{
-					{"t0", []byte("t0val")},
-					{"t1", []byte("t1val")},
-					{"t2", []byte("t2val")},
-					{"t3", []byte("t3val")},
-					{"t4", []byte("t4val")},
+				kvs: []*rpcapi.KeyValue{
+					{Key: &rpcapi.DataItem{ID: []byte("t0")}, Value: []byte("t0val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t2")}, Value: []byte("t2val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t3")}, Value: []byte("t3val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
-				removeKeys: []string{"k0", "k2", "k3"},
+				removeKeys: []*rpcapi.DataItem{{ID: []byte("k0")}, {ID: []byte("k2")}, {ID: []byte("k3")}},
 			},
 			wantErr: false,
 			wantBeforeRemove: &rpcapi.KeyValues{
 				KVs: []*rpcapi.KeyValue{
-					{Key: "t0", Value: "t0val", Found: true},
-					{Key: "t1", Value: "t1val", Found: true},
-					{Key: "t2", Value: "t2val", Found: true},
-					{Key: "t3", Value: "t3val", Found: true},
-					{Key: "t4", Value: "t4val", Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t0")}, Value: []byte("t0val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t2")}, Value: []byte("t2val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t3")}, Value: []byte("t3val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
 			},
 			wantExploreBeforeRemove: []string{"t0", "t1", "t2", "t3", "t4"},
 			wantAfterRemove: &rpcapi.KeyValues{
 				KVs: []*rpcapi.KeyValue{
-					{Key: "t0", Value: "t0val", Found: true},
-					{Key: "t1", Value: "t1val", Found: true},
-					{Key: "t2", Value: "t2val", Found: true},
-					{Key: "t3", Value: "t3val", Found: true},
-					{Key: "t4", Value: "t4val", Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t0")}, Value: []byte("t0val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t1")}, Value: []byte("t1val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t2")}, Value: []byte("t2val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t3")}, Value: []byte("t3val"), Found: true},
+					{Key: &rpcapi.DataItem{ID: []byte("t4")}, Value: []byte("t4val"), Found: true},
 				},
 			},
 			wantExploreAfterRemove: []string{"t0", "t1", "t2", "t3", "t4"},
@@ -453,11 +365,11 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			defer os.Remove(dbpath)
 			db, err := bolt.Open(dbpath, 0666, nil)
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
-			metrics := make(chan *influxdb2.Point)
+			metrics := make(chan *write.Point)
 			defer close(metrics)
-			go func(metrics chan *influxdb2.Point) {
+			go func(metrics chan *write.Point) {
 				for m := range metrics {
 					if m == nil {
 						return
@@ -470,7 +382,7 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				metrics: metrics,
 			}
 			for _, kv := range tt.args.kvs {
-				if err := n.Store(kv.key, kv.val); (err != nil) != tt.wantErr {
+				if _, err := n.Store(kv); (err != nil) != tt.wantErr {
 					t.Errorf("Store() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
@@ -480,15 +392,13 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				t.Errorf("Before remove: Explore() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			sort.Strings(explore)
+			//sort.Strings(explore)
 			sort.Strings(tt.wantExploreBeforeRemove)
-			if !reflect.DeepEqual(explore, tt.wantExploreBeforeRemove) {
-				t.Errorf("Before remove: Explore() = %v, want %v", explore, tt.wantExploreBeforeRemove)
-			}
+			assert.Equal(t, explore, tt.wantExploreBeforeRemove)
 
-			keys := make([]string, len(tt.wantBeforeRemove.KVs))
-			for iter := range tt.wantBeforeRemove.KVs {
-				keys[iter] = tt.wantBeforeRemove.KVs[iter].Key
+			keys := make([]*rpcapi.DataItem, len(tt.wantBeforeRemove.KVs))
+			for i := range tt.wantBeforeRemove.KVs {
+				keys[i] = tt.wantBeforeRemove.KVs[i].Key
 			}
 
 			kvs, err := n.Receive(keys)
@@ -498,19 +408,20 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 
 			assert.Equal(t, tt.wantBeforeRemove, kvs)
 
-			for _, key := range tt.args.removeKeys {
-				if err := n.Remove([]string{key}); (err != nil) != tt.wantErr {
-					t.Errorf("Remove() error = %v, wantErr %v", err, tt.wantErr)
-				}
+			_, err = n.Remove(tt.args.removeKeys)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
 			}
+			assert.NoError(t, err)
 
 			explore, err = n.Explore()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("After remove: Explore() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			sort.Strings(explore)
-			sort.Strings(tt.wantExploreAfterRemove)
+			//sort.Strings(explore)
+			//sort.Strings(tt.wantExploreAfterRemove)
 			assert.Equal(t, tt.wantExploreAfterRemove, explore)
 
 			kvs, err = n.Receive(keys)
@@ -519,8 +430,8 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			}
 
 			keys = make([]string, len(tt.wantAfterRemove.KVs))
-			for iter := range tt.wantAfterRemove.KVs {
-				keys[iter] = tt.wantAfterRemove.KVs[iter].Key
+			for i := range tt.wantAfterRemove.KVs {
+				keys[i] = tt.wantAfterRemove.KVs[i].Key
 			}
 
 			kvs, err = n.Receive(keys)
@@ -531,6 +442,439 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			assert.Equal(t, tt.wantAfterRemove, kvs)
 		})
 	}
+}
+
+func TestNewLocalNode_DBErr(t *testing.T) {
+	lnn := &LocalNode{db: &bolt.DB{}}
+	_, err := lnn.Store(&rpcapi.KeyValue{Key: &rpcapi.DataItem{ID: []byte("test-key")}})
+	assert.Error(t, err)
+
+	_, err = lnn.Receive([]*rpcapi.DataItem{{ID: []byte("test-key")}})
+	assert.Error(t, err)
+
+	_, err = lnn.Remove([]*rpcapi.DataItem{{ID: []byte("test-key")}})
+	assert.Error(t, err)
+
+	_, err = lnn.Explore()
+	assert.Error(t, err)
+}
+
+func TestNewLocalNode_KVR(t *testing.T) {
+	type want struct {
+		err bool
+		n   *LocalNode
+	}
+	type args struct {
+		hashsum uint64
+		hasherr error
+		conf    *Config
+		metrics chan<- *write.Point
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "test",
+			args: args{
+				hasherr: nil,
+				hashsum: 42,
+				conf: &Config{
+					Name:          stringprt("test-node"),
+					Address:       "main-address",
+					RPCAddress:    "rpc-address",
+					InfluxAddress: "influx-address",
+					Geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					Mode:     KvrouterMode,
+					Power:    0,
+					Capacity: 0,
+					DBpath:   "",
+					Health: HealthConfig{
+						CheckInterval:                  "",
+						CheckTimeout:                   "",
+						DeregisterCriticalServiceAfter: "",
+					},
+					KVRouter: &KVRouterConfig{
+						Address: "",
+					},
+					Balancer: &config.BalancerConfig{
+						Mode: 0,
+						SFC: &config.SFCConfig{
+							Dimensions: 0,
+							Size:       0,
+							Curve: config.CurveType{
+								CurveType: 0,
+							},
+						},
+						NodeHash: 0,
+						DataMode: 0,
+						Latency: config.Duration{
+							Duration: 0,
+						},
+						State: false,
+					},
+					Latency: Duration{
+						Duration: 0,
+					},
+				},
+				metrics: nil,
+			},
+			want: want{
+				err: false,
+				n: &LocalNode{
+					id: "test-node",
+					geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					lwID:       int64prt(0),
+					address:    "main-address",
+					rpcaddress: "rpc-address",
+					h:          uint64(42),
+				},
+			},
+		},
+		{
+			name: "hash err",
+			args: args{
+				hasherr: errors.New("hash test err"),
+				conf: &Config{
+					Name:          stringprt("test-node"),
+					Address:       "main-address",
+					RPCAddress:    "rpc-address",
+					InfluxAddress: "influx-address",
+					Geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					Mode:     KvrouterMode,
+					Power:    0,
+					Capacity: 0,
+					DBpath:   "",
+					Health: HealthConfig{
+						CheckInterval:                  "",
+						CheckTimeout:                   "",
+						DeregisterCriticalServiceAfter: "",
+					},
+					KVRouter: &KVRouterConfig{
+						Address: "",
+					},
+					Balancer: &config.BalancerConfig{
+						Mode: 0,
+						SFC: &config.SFCConfig{
+							Dimensions: 0,
+							Size:       0,
+							Curve: config.CurveType{
+								CurveType: 0,
+							},
+						},
+						NodeHash: 0,
+						DataMode: 0,
+						Latency: config.Duration{
+							Duration: 0,
+						},
+						State: false,
+					},
+					Latency: Duration{
+						Duration: 0,
+					},
+				},
+				metrics: nil,
+			},
+			want: want{
+				err: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbpath := tempfile()
+			defer os.Remove(dbpath)
+			db, err := bolt.Open(dbpath, 0666, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			h := &mocks.Hasher{}
+			h.On("Sum", mock.Anything).Return(tt.args.hashsum, tt.args.hasherr)
+			kvr, err := router.NewRouter(nil, h, nil, nil)
+
+			if tt.want.n != nil {
+				tt.want.n.kvr = kvr
+				tt.want.n.db = db
+			}
+			got, err := NewLocalNode(tt.args.conf, db, kvr, tt.args.metrics)
+			if tt.want.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.n, got)
+			}
+
+			_, err = NewLocalNode(tt.args.conf, &bolt.DB{}, kvr, tt.args.metrics)
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestNewLocalNode_Consul(t *testing.T) {
+	type want struct {
+		err bool
+		n   *LocalNode
+	}
+	type args struct {
+		hashsum uint64
+		hasherr error
+		conf    *Config
+		metrics chan<- *write.Point
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "test",
+			args: args{
+				hasherr: nil,
+				hashsum: 42,
+				conf: &Config{
+					Name:          stringprt("test-node"),
+					Address:       "main-address",
+					RPCAddress:    "rpc-address",
+					InfluxAddress: "influx-address",
+					Geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					Mode:     ConsulMode,
+					Power:    0,
+					Capacity: 0,
+					DBpath:   "",
+					Health: HealthConfig{
+						CheckInterval:                  "",
+						CheckTimeout:                   "",
+						DeregisterCriticalServiceAfter: "",
+					},
+					Consul: &ConfigConsul{
+						Config:   consulapi.Config{},
+						Service:  "test-service",
+						KVFolder: "test-folder",
+					},
+					Balancer: &config.BalancerConfig{
+						Mode: 0,
+						SFC: &config.SFCConfig{
+							Dimensions: 0,
+							Size:       0,
+							Curve: config.CurveType{
+								CurveType: 0,
+							},
+						},
+						NodeHash: 0,
+						DataMode: 0,
+						Latency: config.Duration{
+							Duration: 0,
+						},
+						State: false,
+					},
+					Latency: Duration{
+						Duration: 0,
+					},
+				},
+				metrics: nil,
+			},
+			want: want{
+				err: false,
+				n: &LocalNode{
+					id: "test-node",
+					geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					lwID:       int64prt(0),
+					address:    "main-address",
+					rpcaddress: "rpc-address",
+					h:          uint64(42),
+				},
+			},
+		},
+		{
+			name: "hash err",
+			args: args{
+				hasherr: errors.New("hash test err"),
+				conf: &Config{
+					Name:          stringprt("test-node"),
+					Address:       "main-address",
+					RPCAddress:    "rpc-address",
+					InfluxAddress: "influx-address",
+					Geo: &rpcapi.GeoData{
+						Longitude: 1,
+						Latitude:  2,
+					},
+					Mode:     ConsulMode,
+					Power:    0,
+					Capacity: 0,
+					DBpath:   "",
+					Health: HealthConfig{
+						CheckInterval:                  "",
+						CheckTimeout:                   "",
+						DeregisterCriticalServiceAfter: "",
+					},
+					KVRouter: &KVRouterConfig{
+						Address: "",
+					},
+					Balancer: &config.BalancerConfig{
+						Mode: 0,
+						SFC: &config.SFCConfig{
+							Dimensions: 0,
+							Size:       0,
+							Curve: config.CurveType{
+								CurveType: 0,
+							},
+						},
+						NodeHash: 0,
+						DataMode: 0,
+						Latency: config.Duration{
+							Duration: 0,
+						},
+						State: false,
+					},
+					Latency: Duration{
+						Duration: 0,
+					},
+				},
+				metrics: nil,
+			},
+			want: want{
+				err: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbpath := tempfile()
+			defer os.Remove(dbpath)
+			db, err := bolt.Open(dbpath, 0666, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			h := &mocks.Hasher{}
+			h.On("Sum", mock.Anything).Return(tt.args.hashsum, tt.args.hasherr)
+			kvr, err := router.NewRouter(nil, h, nil, nil)
+
+			if tt.want.n != nil {
+				tt.want.n.kvr = kvr
+				tt.want.n.db = db
+				tt.want.n.consul, _ = consulapi.NewClient(&tt.args.conf.Consul.Config)
+			}
+
+			got, err := NewLocalNode(tt.args.conf, db, kvr, tt.args.metrics)
+			if tt.want.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want.n, got)
+			}
+
+			_, err = NewLocalNode(tt.args.conf, &bolt.DB{}, kvr, tt.args.metrics)
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestLocalNode_Hash(t *testing.T) {
+	inn := &LocalNode{
+		h: 42,
+	}
+	got := inn.Hash()
+	assert.Equal(t, 42, int(got))
+}
+
+func TestLocalNode_SetHash(t *testing.T) {
+	inn := &LocalNode{
+		h: 0,
+	}
+	inn.SetHash(42)
+	assert.Equal(t, 42, int(inn.h))
+}
+
+func TestLocalNode_Move(t *testing.T) {
+	dbpath := tempfile()
+	defer os.Remove(dbpath)
+	db, err := bolt.Open(dbpath, 0666, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	en := &mocks.Node{}
+	en.On("StorePairs", mock.Anything).Return(nil)
+	en.On("ID", mock.Anything).Return("test-en")
+
+	en2 := &mocks.Node{}
+	en2.On("StorePairs", mock.Anything).Return(nil)
+	en2.On("ID", mock.Anything).Return("test-en")
+
+	enErr := &mocks.Node{}
+	enErr.On("StorePairs", mock.Anything).Return(errors.New("test err"))
+	enErr.On("ID", mock.Anything).Return("test-en")
+
+	nk := map[nodes.Node][]string{
+		en:    {"test-key"},
+		en2:   {},
+		enErr: {"test-key"},
+	}
+
+	inn := &LocalNode{db: db}
+
+	err = inn.Move(nk)
+	assert.NoError(t, err)
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucket(mainBucket)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = inn.Move(nk)
+	assert.NoError(t, err)
+
+	inn = &LocalNode{db: &bolt.DB{}}
+	err = inn.Move(nk)
+	assert.NoError(t, err)
+}
+
+func TestLocalNode_StorePairs(t *testing.T) {
+	dbpath := tempfile()
+	defer os.Remove(dbpath)
+	db, err := bolt.Open(dbpath, 0666, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pairs := []*rpcapi.KeyValue{
+		{
+			Key:   "test-key",
+			Value: "test-val",
+			Found: true,
+		},
+	}
+
+	inn := &LocalNode{db: db}
+
+	err = inn.StorePairs(pairs)
+	assert.NoError(t, err)
+
+	inn = &LocalNode{db: &bolt.DB{}}
+
+	err = inn.StorePairs(pairs)
+	assert.Error(t, err)
 }
 
 func tempfile() string {
@@ -545,4 +889,94 @@ func tempfile() string {
 		panic(err)
 	}
 	return f.Name()
+}
+
+func stringprt(s string) *string {
+	return &s
+}
+
+func int64prt(i int64) *int64 {
+	return &i
+}
+
+func IgnoreRegistry(sliceString []string) []string {
+	countString := make(map[string]bool)
+	var uniq []string
+	for _, v := range sliceString {
+		if _, value := countString[strings.ToUpper(v)]; !value {
+			countString[strings.ToUpper(v)] = true
+			uniq = append(uniq, v)
+		}
+
+	}
+	return uniq
+}
+
+func IgnoreRegistryAlt(sliceString []string) []string {
+	countString := make(map[string]struct{})
+	for i := range sliceString {
+		countString[strings.ToUpper(sliceString[i])] = struct{}{}
+	}
+	uniq := make([]string, len(countString))
+	i := 0
+	for key := range countString {
+		uniq[i] = key
+		i++
+	}
+	return uniq
+}
+
+func IgnoreRegistryFold(sliceString []string) []string {
+	var uniq []string
+	for i := range sliceString {
+		f := true
+		for j := range uniq {
+			if strings.EqualFold(sliceString[i], uniq[j]) {
+				f = false
+				break
+			}
+		}
+		if f {
+			uniq = append(uniq, sliceString[i])
+		}
+	}
+	return uniq
+}
+
+func genKeys() (base []string) {
+	for i := 0; i < 1000; i++ {
+		for j := 0; j < 1000; j++ {
+			base = append(base, fmt.Sprintf("key-%d", j))
+		}
+	}
+	return
+}
+
+var base = genKeys()
+
+func BenchmarkLocalNode_IgnoreRegistry(b *testing.B) {
+	log.SetOutput(ioutil.Discard)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		log.Println(IgnoreRegistry(base))
+	}
+}
+
+func BenchmarkLocalNode_IgnoreRegistryAlt(b *testing.B) {
+	log.SetOutput(ioutil.Discard)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		log.Println(IgnoreRegistryAlt(base))
+	}
+}
+
+func BenchmarkLocalNode_IgnoreRegistryFold(b *testing.B) {
+	log.SetOutput(ioutil.Discard)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		log.Println(IgnoreRegistryFold(base))
+	}
 }

@@ -2,7 +2,8 @@ package store
 
 import (
 	"context"
-	"log"
+	"github.com/struckoff/kvstore/logger"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,7 +14,7 @@ import (
 // RunRouter - resister node in remote KVRouter.
 // Run goroutine which sends heartbeat each Config.Health.CheckInterval
 func (inn *LocalNode) RunRouter(conf *Config) error {
-	log.Printf("TRYING TO CONNECT TO KVROUTER [%s]", conf.KVRouter.Address)
+	logger.Logger().Info("trying to connect to kvrouter", zap.String("kvrouter address", conf.KVRouter.Address))
 	c, err := client(conf.KVRouter.Address)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize kvrouter client")
@@ -22,7 +23,7 @@ func (inn *LocalNode) RunRouter(conf *Config) error {
 	if err := inn.routerAnnounce(conf); err != nil {
 		return errors.Wrap(err, "unable to run announce node in kvrouter")
 	}
-	log.Printf("CONNECTED TO KVROUTER [%s]", conf.KVRouter.Address)
+	logger.Logger().Info("connected to kvrouter", zap.String("kvrouter address", conf.KVRouter.Address))
 	return nil
 }
 
@@ -71,7 +72,7 @@ func (inn *LocalNode) updateTTLRoute(interval time.Duration) {
 	defer ticker.Stop()
 	for range ticker.C {
 		if _, err := inn.kvrAgent.RPCHeartbeat(context.TODO(), p); err != nil {
-			log.Printf("err=\"Check failed\" msg=\"%s\"", err.Error())
+			logger.Logger().Warn("check failed", zap.Error(err))
 		}
 	}
 }

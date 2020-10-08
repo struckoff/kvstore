@@ -3,7 +3,8 @@ package config
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
-	"log"
+	"github.com/struckoff/kvstore/logger"
+	"go.uber.org/zap"
 	"strings"
 	"time"
 )
@@ -42,9 +43,6 @@ func (bc *BalancerConfig) UnmarshalJSON(cb []byte) error {
 			return errors.New("unable to find SFC config")
 		}
 	case ConsistentMode:
-		//if bc.Ring == nil {
-		//	return errors.New("unable to find consistent ring config")
-		//}
 		if bc.NodeHash == GeoSfc {
 			return errors.New("SFC node hasher should be used with SFC balancer")
 		}
@@ -117,6 +115,6 @@ func (d *Duration) UnmarshalJSON(cb []byte) error {
 		return err
 	}
 	d.Duration = dur
-	log.Printf("HTTP latency: %s", d.Duration.String())
+	logger.Logger().Info("HTTP latency", zap.Duration("latency", d.Duration))
 	return nil
 }

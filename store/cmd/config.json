@@ -1,10 +1,8 @@
 {
-  "Name": "node-0",
   "Mode": "consul",
-  "Address": "0.0.0.0:9191",
-  "RPCAddress": "127.0.0.1:9291",
+  "DBPath": "/data/data.db",
   "Power": 1,
-  "Capacity": 1,
+  "Capacity": 100000,
   "Balancer":{
     "Mode": "SFC",
     "DataMode": "geo",
@@ -20,15 +18,14 @@
     "CheckTimeout": "10s",
     "DeregisterCriticalServiceAfter": "10s"
   },
-"Geo":{
-  "Latitude":0.0,
-  "Longitude":0.0
-},
+  "Geo":{
+    "Latitude":0.0,
+    "Longitude":0.0
+  },
   "KVRouter": {
     "Address": "127.0.0.1:9290"
   },
   "Consul": {
-    "Service": "kvstore",
-    "Address": "127.0.0.1:8501"
+    "Service": "kvstore"
   }
 }

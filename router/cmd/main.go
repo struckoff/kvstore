@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"log"
+	"google.golang.org/grpc/keepalive"
 	"net"
 	"os"
+	"time"
 )
 
 func main() {
@@ -70,10 +73,14 @@ func RunRPCServer(h rpcapi.RPCBalancerServer, conf *config.Config) error {
 	if err != nil {
 		return err
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute,
+		}),
+	)
 	rpcapi.RegisterRPCBalancerServer(s, h)
 
-	log.Printf("RUN RPC Server [%s]", conf.RPCAddress)
+	logger.Logger().Info("RUN RPC Server", zap.String("address", conf.RPCAddress))
 	if err := s.Serve(inbound); err != nil {
 		return err
 	}

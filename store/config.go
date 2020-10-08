@@ -3,9 +3,10 @@ package store
 import (
 	"encoding/json"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/config"
 	"github.com/struckoff/kvstore/router/rpcapi"
-	"log"
+	"go.uber.org/zap"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/sfcframework/curve"
 )
 
 const (
@@ -199,7 +200,7 @@ func (conf *Config) Prepare() error {
 //  sfc.dimensions 		   -> Balancer.SFC.Dimensions
 //  sfc.curve 	   		   -> Balancer.SFC.Curve
 func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
-	logform := "%s: found in consul with value \"%s\""
+	//logform := "%s: found in consul with value \"%s\""
 	if conf.Name != nil {
 		name, err := consul.Agent().NodeName()
 		if err != nil {
@@ -221,26 +222,26 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 	//var balConfig config.BalancerConfig
 
 	if val, ok := kvMap["balancermode"]; ok {
-		log.Printf(logform, "balancermode", val)
+		logger.Logger().Info("found in consul", zap.Binary("balancermode", val))
 		if err := conf.Balancer.Mode.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 
 	if val, ok := kvMap["nodehasher"]; ok {
-		log.Printf(logform, "nodehasher", val)
+		logger.Logger().Info("found in consul", zap.Binary("nodehasher", val))
 		if err := conf.Balancer.NodeHash.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["datamode"]; ok {
-		log.Printf(logform, "datamode", val)
+		logger.Logger().Info("found in consul", zap.Binary("datamode", val))
 		if err := conf.Balancer.DataMode.UnmarshalJSON(val); err != nil {
 			return err
 		}
 	}
 	if val, ok := kvMap["sfc.size"]; ok {
-		log.Printf(logform, "sfc.size", val)
+		logger.Logger().Info("found in consul", zap.Binary("sfc.size", val))
 		if conf.Balancer.SFC == nil {
 			conf.Balancer.SFC = &config.SFCConfig{}
 		}
@@ -250,7 +251,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 		}
 	}
 	if val, ok := kvMap["sfc.dimensions"]; ok {
-		log.Printf(logform, "sfc.dimensions", val)
+		logger.Logger().Info("found in consul", zap.Binary("sfc.dimensions", val))
 		if conf.Balancer.SFC == nil {
 			conf.Balancer.SFC = &config.SFCConfig{}
 		}
@@ -260,7 +261,7 @@ func (conf *Config) fillConfigFromConsul(consul *consulapi.Client) error {
 		}
 	}
 	if val, ok := kvMap["sfc.curve"]; ok {
-		log.Printf(logform, "sfc.curve", val)
+		logger.Logger().Info("found in consul", zap.Binary("sfc.curve", val))
 		if conf.Balancer.SFC == nil {
 			conf.Balancer.SFC = &config.SFCConfig{}
 		}
@@ -474,6 +475,6 @@ func (d *Duration) UnmarshalJSON(cb []byte) error {
 		return err
 	}
 	d.Duration = dur
-	log.Printf("RPC latency: %s", d.Duration.String())
+	logger.Logger().Info("RPC", zap.Duration("latency", d.Duration))
 	return nil
 }

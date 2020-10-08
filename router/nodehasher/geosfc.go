@@ -2,9 +2,9 @@ package nodehasher
 
 import (
 	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
-	"github.com/struckoff/SFCFramework/transform"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	"github.com/struckoff/sfcframework/curve"
+	"github.com/struckoff/sfcframework/transform"
 )
 
 type GeoSfc struct {

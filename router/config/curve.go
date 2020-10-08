@@ -2,7 +2,7 @@ package config
 
 import (
 	"github.com/pkg/errors"
-	"github.com/struckoff/SFCFramework/curve"
+	"github.com/struckoff/sfcframework/curve"
 	"strings"
 )
 

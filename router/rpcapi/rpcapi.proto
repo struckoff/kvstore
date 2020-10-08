@@ -3,24 +3,24 @@ syntax = "proto3";
 package rpcapi;
 
 message KeyValue {
-	string Key = 1;
-	string Value = 2;
+	DataItem Key = 1;
+	bytes Value = 2;
 	bool Found = 3;
 }
 
 message Empty {}
 
 message KeyReq {
-	repeated string Keys = 1;
+	repeated bytes Keys = 1;
 }
 
 message MoveReq{
-	repeated KeyList KL = 1;
+	repeated KeyList KLs = 1;
 }
 
 message KeyList{
 	NodeMeta Node = 1;
-	repeated string Keys = 2;
+	DataItems Keys = 2;
 }
 
 message NodeMetas {
@@ -47,9 +47,9 @@ message GeoData{
 	double Latitude = 2;
 }
 
-message ExploreRes {
-	repeated string Keys = 1;
-}
+//message ExploreRes {
+//	repeated string Keys = 1;
+//}
 
 message KeyValues {
 	repeated KeyValue KVs = 1;
@@ -60,11 +60,11 @@ message Capacity {
 }
 
 service RPCNode {
-	rpc RPCStore (KeyValue) returns (Empty);
-	rpc RPCStorePairs (KeyValues) returns (Empty);
-	rpc RPCReceive (KeyReq) returns (KeyValues);
-	rpc RPCRemove (KeyReq) returns (Empty);
-	rpc RPCExplore (Empty) returns (ExploreRes);
+	rpc RPCStore (KeyValue) returns (DataItem);
+	rpc RPCStorePairs (KeyValues) returns (DataItems);
+	rpc RPCReceive (DataItems) returns (KeyValues);
+	rpc RPCRemove (DataItems) returns (DataItems);
+	rpc RPCExplore (Empty) returns (DataItems);
 	rpc RPCMeta (Empty) returns (NodeMeta);
 	rpc RPCMove (MoveReq) returns (Empty);
 //	rpc RPCCapacity (Empty) returns (Capacity);
@@ -81,4 +81,14 @@ service RPCBalancer {
 
 message Ping {
 	string NodeID = 1;
+}
+
+message DataItems {
+	repeated DataItem DIs = 1;
+}
+
+message DataItem {
+	bytes ID = 1;
+	uint64 Size = 2;
+	GeoData Geo = 3;
 }

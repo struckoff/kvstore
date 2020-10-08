@@ -2,11 +2,12 @@ package nodes
 
 import (
 	"context"
-	balancer "github.com/struckoff/SFCFramework"
+	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/rpcapi"
+	"github.com/struckoff/sfcframework/node"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"log"
 	"sync"
 	"time"
 )
@@ -17,11 +18,9 @@ const MaxRecvSendMsgSize = 100 * 1024 * 1024
 // NewExternalNode - create a new instance of an external by given meta information.
 func NewExternalNode(meta *rpcapi.NodeMeta, hasher nodehasher.Hasher) (*RemoteNode, error) {
 	nodeC, capC, err := enClient(meta.RPCAddress)
-	//conn, err := grpc.Dial(meta.RPCAddress, grpc.WithInsecure()) // TODO Make it secure
-	//if err != nil {
-	//	return nil, err
-	//}
-	//c := rpcapi.NewRPCNodeClient(conn)
+	if err != nil {
+		return nil, err
+	}
 	var hashsum uint64
 	if hasher != nil {
 		hashsum, err = hasher.Sum(meta)
@@ -54,13 +53,13 @@ func NewExternalNodeByAddr(rpcaddr string, hasher nodehasher.Hasher) (*RemoteNod
 	return en, nil
 }
 
-func newExternalNode(meta *rpcapi.NodeMeta, nodeC rpcapi.RPCNodeClient, capC rpcapi.RPCCapacityClient, h uint64) *RemoteNode {
+func newExternalNode(meta *rpcapi.NodeMeta, nodeC rpcapi.RPCNodeClient, c rpcapi.RPCCapacityClient, h uint64) *RemoteNode {
 	return &RemoteNode{
 		id:         meta.ID,
 		address:    meta.Address,
 		rpcaddress: meta.RPCAddress,
 		p:          NewPower(meta.Power),
-		c:          NewCapacity(capC),
+		c:          NewCapacity(c),
 		rpcclient:  nodeC,
 		h:          h,
 		geo:        meta.Geo,
@@ -91,7 +90,7 @@ type RemoteNode struct {
 	address    string // node HTTP address
 	rpcaddress string // node RPC address
 	p          Power
-	c          Capacity
+	c          RemoteCapacity
 	rpcclient  rpcapi.RPCNodeClient
 	geo        *rpcapi.GeoData
 	h          uint64
@@ -104,12 +103,12 @@ func (n *RemoteNode) ID() string {
 	return n.id
 }
 
-func (n *RemoteNode) Power() balancer.Power {
+func (n *RemoteNode) Power() node.Power {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.p
 }
-func (n *RemoteNode) Capacity() balancer.Capacity {
+func (n *RemoteNode) Capacity() Capacity {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return &n.c
@@ -122,59 +121,54 @@ func (n *RemoteNode) Hash() uint64 {
 }
 
 //Save value for a given key on the remote node
-func (n *RemoteNode) Store(key string, body []byte) error {
-	log.Printf("Store key(%s) on %s", key, n.id)
-	req := rpcapi.KeyValue{Key: key, Value: string(body)}
-	if _, err := n.rpcclient.RPCStore(context.TODO(), &req); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Save key/value pairs on remote node
-func (n *RemoteNode) StorePairs(pairs []*rpcapi.KeyValue) error {
-	log.Printf("Store pairs on %s", n.id)
-	req := rpcapi.KeyValues{KVs: pairs}
-	if _, err := n.rpcclient.RPCStorePairs(context.TODO(), &req); err != nil {
-		return err
-	}
-	return nil
-}
-
-//Receive value for a given key from the remote node
-func (n *RemoteNode) Receive(keys []string) (*rpcapi.KeyValues, error) {
-	log.Printf("Receive keys(%v) from %s", keys, n.id)
-	req := rpcapi.KeyReq{Keys: keys}
-	res, err := n.rpcclient.RPCReceive(context.TODO(), &req)
-	return res, err
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//b, err := json.Marshal(res)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "failed to marshal response from external node")
-	//}
-	//return b, nil
-}
-
-// Explore returns the list of keys on remote node
-func (n *RemoteNode) Explore() ([]string, error) {
-	log.Printf("Exploring %s", n.id)
-	req := rpcapi.Empty{}
-	res, err := n.rpcclient.RPCExplore(context.TODO(), &req)
+func (n *RemoteNode) Store(kv *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
+	logger.Logger().Debug("store key", zap.String("Key", string(kv.Key.ID)), zap.String("Node", n.id))
+	di, err := n.rpcclient.RPCStore(context.TODO(), kv)
 	if err != nil {
 		return nil, err
 	}
-	return res.Keys, nil
+	return di, nil
+}
+
+// Save key/value pairs on remote node
+func (n *RemoteNode) StorePairs(pairs []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
+	logger.Logger().Debug("store pairs", zap.String("Node", n.id))
+	req := rpcapi.KeyValues{KVs: pairs}
+	dis, err := n.rpcclient.RPCStorePairs(context.TODO(), &req)
+	if err != nil {
+		return nil, err
+	}
+	return dis.DIs, nil
+}
+
+//Receive value for a given key from the remote node
+func (n *RemoteNode) Receive(dis []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
+	logger.Logger().Debug("receive keys", zap.String("Node", n.id))
+	req := rpcapi.DataItems{DIs: dis}
+	res, err := n.rpcclient.RPCReceive(context.TODO(), &req)
+	return res, err
+}
+
+// Explore returns the list of keys on remote node
+func (n *RemoteNode) Explore() ([]*rpcapi.DataItem, error) {
+	logger.Logger().Debug("exploring", zap.String("Node", n.id))
+	req := rpcapi.Empty{}
+	dis, err := n.rpcclient.RPCExplore(context.TODO(), &req)
+	if err != nil {
+		return nil, err
+	}
+	return dis.DIs, nil
 }
 
 // Remove value for a given key
-func (n *RemoteNode) Remove(key []string) error {
-	log.Printf("Remove key(%s) from %s", key, n.id)
-	req := rpcapi.KeyReq{Keys: key}
-	_, err := n.rpcclient.RPCRemove(context.TODO(), &req)
-	return err
+func (n *RemoteNode) Remove(dis []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
+	logger.Logger().Debug("remove keys", zap.String("Node", n.id))
+	req := rpcapi.DataItems{DIs: dis}
+	ds, err := n.rpcclient.RPCRemove(context.TODO(), &req)
+	if err != nil {
+		return nil, err
+	}
+	return ds.DIs, nil
 }
 
 // Return meta information about the node
@@ -195,16 +189,16 @@ func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
 	}
 }
 
-// Move keys  from remote node to another remote node.
-func (n *RemoteNode) Move(nk map[Node][]string) error {
+// Move keys from remote node to another remote node.
+func (n *RemoteNode) Move(nk map[Node][]*rpcapi.DataItem) error {
 	mr := &rpcapi.MoveReq{}
-	for en, keys := range nk {
+	for en, dis := range nk {
 		meta := en.Meta()
 		kl := &rpcapi.KeyList{
 			Node: meta,
-			Keys: keys,
+			Keys: &rpcapi.DataItems{DIs: dis},
 		}
-		mr.KL = append(mr.KL, kl)
+		mr.KLs = append(mr.KLs, kl)
 	}
 	_, err := n.rpcclient.RPCMove(context.TODO(), mr)
 	return err
