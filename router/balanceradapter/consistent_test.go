@@ -346,31 +346,9 @@ func TestConsistent_AddData(t *testing.T) {
 	cb := NewConsistentBalancer()
 	cb.ring.Add("test-node")
 	cb.nodes.Store("test-node", &nodes.RemoteNode{})
-	n, cid, err := cb.AddData(di)
+	err := cb.AddData(1, di)
 
 	assert.NoError(t, err)
-	assert.Equal(t, &nodes.RemoteNode{}, n)
-	assert.Equal(t, int(cid), 0)
-
-	//"node not found"
-	cb = NewConsistentBalancer()
-	cb.ring.Add("test-node-not-found")
-	_, _, err = cb.AddData(di)
-	assert.Error(t, err)
-
-	//"wrong node type"
-	cb = NewConsistentBalancer()
-	cb.ring.Add("test-node")
-	cb.nodes.Store("test-node", struct{}{})
-	_, _, err = cb.AddData(di)
-
-	assert.Error(t, err)
-
-	//ring err
-	cb = NewConsistentBalancer()
-	_, _, err = cb.AddData(di)
-
-	assert.Error(t, err)
 }
 
 func TestConsistent_RemoveData(t *testing.T) {
