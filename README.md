@@ -1,4 +1,5 @@
 ![Go](https://github.com/struckoff/kvstore/workflows/Go/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/struckoff/kvstore)](https://goreportcard.com/report/github.com/struckoff/kvstore)
 
 # KV Store
 
