@@ -2,6 +2,7 @@ package optimizer
 
 import (
 	"github.com/pkg/errors"
+	"github.com/struckoff/kvstore/router/nodes"
 	balancer "github.com/struckoff/sfcframework"
 	"math"
 	"sort"
@@ -38,7 +39,11 @@ func CapPowerOptimizer(s *balancer.Space) (cgs []*balancer.CellGroup, err error)
 	}
 
 	for i := range cgs {
-		c, err := cgs[i].Node().Capacity().Get()
+		n, ok := cgs[i].Node().(nodes.Node)
+		if !ok {
+			return nil, errors.New("out of capacity")
+		}
+		c, err := n.Capacity().Get()
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +91,11 @@ func equalizer(lcg, rcg *balancer.CellGroup, s *balancer.Space) error {
 		return errors.New("wrong group pair")
 	}
 
-	lc, err := lcg.Node().Capacity().Get()
+	n, ok := lcg.Node().(nodes.Node)
+	if !ok {
+		return errors.New("unable cast node to nodes.Node")
+	}
+	lc, err := n.Capacity().Get()
 	if err != nil {
 		return err
 	}
@@ -103,7 +112,11 @@ func equalizer(lcg, rcg *balancer.CellGroup, s *balancer.Space) error {
 		s.FillCellGroup(rcg)
 	}
 	if nbf {
-		rc, err := rcg.Node().Capacity().Get()
+		n, ok := lcg.Node().(nodes.Node)
+		if !ok {
+			return errors.New("unable cast node to nodes.Node")
+		}
+		rc, err := n.Capacity().Get()
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,6 @@ func TestCapacity_RPCGet(t *testing.T) {
 	}
 	got, err := c.RPCGet(context.TODO(), &rpcapi.Empty{})
 	assert.NoError(t, err)
-	exp :=  &rpcapi.Capacity{Capacity:42.42}
+	exp := &rpcapi.Capacity{Capacity: 42.42}
 	assert.Equal(t, exp, got)
 }

@@ -55,7 +55,7 @@ func run() (err error) {
 			"",
 			influxdb2.DefaultOptions().SetBatchSize(20))
 		defer client.Close()
-		writeApi := client.WriteApi("", "kvstore/autogen")
+		writeApi := client.WriteAPI("", "kvstore/autogen")
 		defer writeApi.Flush()
 		balancermode, err := conf.Balancer.Mode.String()
 		if err != nil {
@@ -101,12 +101,16 @@ func run() (err error) {
 		if err != nil {
 			return err
 		}
-		kvr, err := router.NewRouter(bal, hr, ndf, conf.Balancer)
+		rpcndf, err := dataitem.GetDataItemFromRpcFunc(conf.Balancer.DataMode)
+		if err != nil {
+			return err
+		}
+		kvr, err := router.NewRouter(bal, hr, ndf, rpcndf, conf.Balancer)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize router")
 		}
 		//Initialize local node
-		inn, err = store.NewLocalNode(&conf, db, kvr, metrics)
+		inn, err = store.NewLocalNode(&conf, ndf, db, kvr, metrics)
 		if err != nil {
 			return err
 		}
@@ -119,7 +123,11 @@ func run() (err error) {
 			}
 		}(errCh, &conf)
 	case store.KvrouterMode:
-		inn, err = store.NewLocalNode(&conf, db, nil, metrics)
+		ndf, err := dataitem.GetDataItemFunc(conf.Balancer.DataMode)
+		if err != nil {
+			return err
+		}
+		inn, err = store.NewLocalNode(&conf, ndf, db, nil, metrics)
 		if err != nil {
 			return err
 		}

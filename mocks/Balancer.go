@@ -15,34 +15,18 @@ type Balancer struct {
 	mock.Mock
 }
 
-// AddData provides a mock function with given fields: di
-func (_m *Balancer) AddData(di balancer.DataItem) (nodes.Node, uint64, error) {
-	ret := _m.Called(di)
+// AddData provides a mock function with given fields: cID, di
+func (_m *Balancer) AddData(cID uint64, di balancer.DataItem) error {
+	ret := _m.Called(cID, di)
 
-	var r0 nodes.Node
-	if rf, ok := ret.Get(0).(func(balancer.DataItem) nodes.Node); ok {
-		r0 = rf(di)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(uint64, balancer.DataItem) error); ok {
+		r0 = rf(cID, di)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(nodes.Node)
-		}
+		r0 = ret.Error(0)
 	}
 
-	var r1 uint64
-	if rf, ok := ret.Get(1).(func(balancer.DataItem) uint64); ok {
-		r1 = rf(di)
-	} else {
-		r1 = ret.Get(1).(uint64)
-	}
-
-	var r2 error
-	if rf, ok := ret.Get(2).(func(balancer.DataItem) error); ok {
-		r2 = rf(di)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0
 }
 
 // AddNode provides a mock function with given fields: n

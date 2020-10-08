@@ -1,21 +1,37 @@
 package dataitem
 
-import balancer "github.com/struckoff/sfcframework"
+import (
+	"github.com/struckoff/kvstore/router/rpcapi"
+)
 
-type KVDataItem string
+type KVDataItem struct {
+	string
+	size uint64
+}
 
-func NewKVDataItem(key string) (balancer.DataItem, error) {
-	return KVDataItem(key), nil
+func KVDataItemFromRPC(rdi *rpcapi.DataItem) DataItem {
+	return KVDataItem{string(rdi.ID), rdi.Size}
+}
+
+func NewKVDataItem(k string, size uint64) (DataItem, error) {
+	return KVDataItem{string: k, size: size}, nil
 }
 
 func (di KVDataItem) ID() string {
-	return string(di)
+	return di.string
 }
 
 func (di KVDataItem) Size() uint64 {
-	return 1
+	return di.size
 }
 
 func (di KVDataItem) Values() []interface{} {
-	return []interface{}{string(di)}
+	return []interface{}{di.string}
+}
+
+func (di KVDataItem) RPCApi() *rpcapi.DataItem {
+	return &rpcapi.DataItem{
+		ID:   []byte(di.string),
+		Size: di.size,
+	}
 }

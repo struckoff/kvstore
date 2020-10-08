@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
+	"github.com/struckoff/kvstore/router/rpcapi"
 	"go.uber.org/zap"
 	"strconv"
 	"strings"
@@ -159,19 +160,19 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- nodes.Nod
 }
 
 //keysLocations - returns keys which should be moved to another node
-func (inn *LocalNode) keysLocations() (map[nodes.Node][]string, error) {
-	res := make(map[nodes.Node][]string)
-	keys, err := inn.Explore()
+func (inn *LocalNode) keysLocations() (map[nodes.Node][]*rpcapi.DataItem, error) {
+	res := make(map[nodes.Node][]*rpcapi.DataItem)
+	dis, err := inn.Explore()
 	if err != nil {
 		return nil, err
 	}
-	for i := range keys {
-		n, err := inn.kvr.LocateKey(keys[i])
+	for i := range dis {
+		n, _, err := inn.kvr.LocateKey(dis[i])
 		if err != nil {
 			return nil, err
 		}
 		if inn.ID() != n.ID() {
-			res[n] = append(res[n], keys[i])
+			res[n] = append(res[n], dis[i])
 		}
 	}
 	return res, nil

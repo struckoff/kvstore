@@ -21,3 +21,5 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.32.0
 )
+
+replace github.com/struckoff/sfcframework v0.0.0-20200924152342-26eb78d20f1a => /home/struckoff/Projects/Go/src/github.com/struckoff/sfcframework

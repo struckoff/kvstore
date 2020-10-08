@@ -1,10 +1,12 @@
 package balanceradapter
 
 import (
+	"fmt"
 	"github.com/lafikl/consistent"
 	"github.com/stretchr/testify/assert"
 	"github.com/struckoff/kvstore/mocks"
 	"github.com/struckoff/kvstore/router/nodes"
+	balancermocks "github.com/struckoff/sfcframework/mocks"
 	"sort"
 	"sync"
 	"testing"
@@ -292,4 +294,164 @@ func TestConsistent_SetNodes(t *testing.T) {
 			assert.Equal(t, tt.wantNodes, mapNodes)
 		})
 	}
+}
+
+func TestNewConsistentBalancer(t *testing.T) {
+	cb := NewConsistentBalancer()
+	exp := &Consistent{
+		ring:  consistent.New(),
+		nodes: sync.Map{},
+	}
+	assert.Equal(t, exp, cb)
+}
+
+func TestConsistent_LocateData(t *testing.T) {
+	di := &balancermocks.DataItem{}
+	di.On("ID").Return("di-id")
+
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	n, cid, err := cb.LocateData(di)
+
+	assert.NoError(t, err)
+	assert.Equal(t, &nodes.RemoteNode{}, n)
+	assert.Equal(t, int(cid), 0)
+
+	//"node not found"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node-not-found")
+	_, _, err = cb.LocateData(di)
+	assert.Error(t, err)
+
+	//"wrong node type"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", struct{}{})
+	_, _, err = cb.LocateData(di)
+
+	assert.Error(t, err)
+
+	//ring err
+	cb = NewConsistentBalancer()
+	_, _, err = cb.LocateData(di)
+
+	assert.Error(t, err)
+}
+
+func TestConsistent_AddData(t *testing.T) {
+	di := &balancermocks.DataItem{}
+	di.On("ID").Return("di-id")
+
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	n, cid, err := cb.AddData(di)
+
+	assert.NoError(t, err)
+	assert.Equal(t, &nodes.RemoteNode{}, n)
+	assert.Equal(t, int(cid), 0)
+
+	//"node not found"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node-not-found")
+	_, _, err = cb.AddData(di)
+	assert.Error(t, err)
+
+	//"wrong node type"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", struct{}{})
+	_, _, err = cb.AddData(di)
+
+	assert.Error(t, err)
+
+	//ring err
+	cb = NewConsistentBalancer()
+	_, _, err = cb.AddData(di)
+
+	assert.Error(t, err)
+}
+
+func TestConsistent_RemoveData(t *testing.T) {
+	di := &balancermocks.DataItem{}
+
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	err := cb.RemoveData(di)
+
+	assert.NoError(t, err)
+}
+
+func TestConsistent_Optimize(t *testing.T) {
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	err := cb.Optimize()
+
+	assert.NoError(t, err)
+}
+
+func TestConsistent_Reset(t *testing.T) {
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	err := cb.Reset()
+
+	assert.NoError(t, err)
+}
+
+func TestConsistent_Nodes(t *testing.T) {
+	exp := make([]nodes.Node, 10)
+	cb := NewConsistentBalancer()
+	for i := 0; i < 10; i++ {
+		cb.ring.Add(fmt.Sprintf("test-node-%d", i))
+		cb.nodes.Store(fmt.Sprintf("test-node-%d", i), &nodes.RemoteNode{})
+		exp[i] = &nodes.RemoteNode{}
+	}
+	got, err := cb.Nodes()
+	assert.NoError(t, err)
+	assert.Equal(t, exp, got)
+
+	//"node not found"
+	cb = NewConsistentBalancer()
+	for i := 0; i < 10; i++ {
+		cb.ring.Add(fmt.Sprintf("test-node-%d", i))
+	}
+	_, err = cb.Nodes()
+	assert.Error(t, err)
+
+	//"wrong node type"
+	cb = NewConsistentBalancer()
+	for i := 0; i < 10; i++ {
+		cb.ring.Add(fmt.Sprintf("test-node-%d", i))
+		cb.nodes.Store(fmt.Sprintf("test-node-%d", i), struct{}{})
+	}
+	_, err = cb.Nodes()
+	assert.Error(t, err)
+}
+
+func TestConsistent_GetNode(t *testing.T) {
+	cb := NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", &nodes.RemoteNode{})
+	n, err := cb.GetNode("test-node")
+
+	assert.NoError(t, err)
+	assert.Equal(t, &nodes.RemoteNode{}, n)
+
+	//"node not found"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node-not-found")
+	_, err = cb.GetNode("test-node-not-found")
+	assert.Error(t, err)
+
+	//"wrong node type"
+	cb = NewConsistentBalancer()
+	cb.ring.Add("test-node")
+	cb.nodes.Store("test-node", struct{}{})
+	_, err = cb.GetNode("test-node")
+
+	assert.Error(t, err)
 }

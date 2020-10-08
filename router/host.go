@@ -51,7 +51,11 @@ func NewHost(conf *config.Config) (*Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	kvr, err := NewRouter(bal, hr, ndf, conf.Balancer)
+	rpcndf, err := dataitem.GetDataItemFromRpcFunc(conf.Balancer.DataMode)
+	if err != nil {
+		return nil, err
+	}
+	kvr, err := NewRouter(bal, hr, ndf, rpcndf, conf.Balancer)
 	if err != nil {
 		return nil, err
 	}

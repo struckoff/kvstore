@@ -8,6 +8,8 @@ import (
 	"github.com/struckoff/kvstore/router/dataitem"
 	"github.com/struckoff/kvstore/router/nodehasher"
 	"github.com/struckoff/kvstore/router/nodes"
+	"github.com/struckoff/kvstore/router/rpcapi"
+	balancer "github.com/struckoff/sfcframework"
 	"golang.org/x/sync/errgroup"
 	"log"
 	"sync"
@@ -18,15 +20,17 @@ type Router struct {
 	bal    balanceradapter.Balancer
 	hasher nodehasher.Hasher
 	ndf    dataitem.NewDataItemFunc
+	rpcndf dataitem.DataItemFromRpc
 	conf   *config.BalancerConfig
 	opLock sync.Mutex
 }
 
-func NewRouter(bal balanceradapter.Balancer, h nodehasher.Hasher, ndf dataitem.NewDataItemFunc, conf *config.BalancerConfig) (*Router, error) {
+func NewRouter(bal balanceradapter.Balancer, h nodehasher.Hasher, ndf dataitem.NewDataItemFunc, rpcndf dataitem.DataItemFromRpc, conf *config.BalancerConfig) (*Router, error) {
 	r := &Router{
 		bal:    bal,
 		hasher: h,
 		ndf:    ndf,
+		rpcndf: rpcndf,
 		conf:   conf,
 	}
 	return r, nil
@@ -66,48 +70,34 @@ func (h *Router) removeNode(id string) error {
 }
 
 // Returns node from kvrouter by given key.
-func (h *Router) LocateKey(key string) (nodes.Node, error) {
+func (h *Router) LocateKey(rdi *rpcapi.DataItem) (nodes.Node, uint64, error) {
 	//h.opLock.Lock()
 	//defer h.opLock.Unlock()
-	di, err := h.ndf(key)
+	//di, err := h.ndf(key, 0)
+	di := h.rpcndf(rdi)
+	nb, cid, err := h.bal.LocateData(di)
 	if err != nil {
-		return nil, err
-	}
-	nb, _, err := h.bal.LocateData(di)
-	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	n, ok := nb.(nodes.Node)
 	if !ok {
-		return nil, errors.New("wrong node type")
+		return nil, 0, errors.New("wrong node type")
 	}
-	return n, nil
+	return n, cid, nil
 }
 
-func (h *Router) AddData(key string) (nodes.Node, error) {
+func (h *Router) AddData(cID uint64, di balancer.DataItem) error {
 	h.opLock.Lock()
 	defer h.opLock.Unlock()
-	return h.addData(key)
+	return h.addData(cID, di)
 }
 
-func (h *Router) addData(key string) (nodes.Node, error) {
-	di, err := h.ndf(key)
-	if err != nil {
-		return nil, err
-	}
-	nb, _, err := h.bal.AddData(di)
-	if err != nil {
-		return nil, err
-	}
-	n, ok := nb.(nodes.Node)
-	if !ok {
-		return nil, errors.New("wrong node type")
-	}
-	return n, nil
+func (h *Router) addData(cID uint64, di balancer.DataItem) error {
+	return h.bal.AddData(cID, di)
 }
 
 func (h *Router) RemoveData(key string) error {
-	di, err := h.ndf(key)
+	di, err := h.ndf(key, 0)
 	if err != nil {
 		return err
 	}
@@ -150,18 +140,18 @@ func (h *Router) fillBalancer() error {
 		return err
 	}
 
-	keyCh := make(chan string)
-	defer close(keyCh)
+	diCh := make(chan rpcapi.DataItem)
+	defer close(diCh)
 	//
 	if len(ns) == 0 {
 		return nil
 	}
 	nseg, nsctx := errgroup.WithContext(context.Background())
 	addeg, addctx := errgroup.WithContext(nsctx)
-	addeg.Go(h.addKeysGoroutine(keyCh, addctx))
+	addeg.Go(h.addKeysGoroutine(diCh, addctx))
 
 	for _, n := range ns {
-		nseg.Go(h.fillBalancerNode(n, keyCh, addctx))
+		nseg.Go(h.fillBalancerNode(n, diCh, addctx))
 	}
 
 	err = nseg.Wait()
@@ -171,14 +161,14 @@ func (h *Router) fillBalancer() error {
 	return err
 }
 
-func (h *Router) fillBalancerNode(n nodes.Node, keyCh chan<- string, ctx context.Context) func() error {
+func (h *Router) fillBalancerNode(n nodes.Node, diCh chan<- rpcapi.DataItem, ctx context.Context) func() error {
 	return func() (err error) {
-		var keys []string
+		var dis []*rpcapi.DataItem
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			keys, err = n.Explore()
+			dis, err = n.Explore()
 			if err != nil {
 				return err
 			}
@@ -187,11 +177,11 @@ func (h *Router) fillBalancerNode(n nodes.Node, keyCh chan<- string, ctx context
 		case <-ctx.Done():
 			return nil
 		default:
-			for i := range keys {
+			for i := range dis {
 				select {
 				case <-ctx.Done():
 					return nil
-				case keyCh <- keys[i]:
+				case diCh <- *dis[i]:
 				}
 
 			}
@@ -200,17 +190,22 @@ func (h *Router) fillBalancerNode(n nodes.Node, keyCh chan<- string, ctx context
 	}
 }
 
-func (h *Router) addKeysGoroutine(keysCh <-chan string, ctx context.Context) func() error {
+func (h *Router) addKeysGoroutine(diCh <-chan rpcapi.DataItem, ctx context.Context) func() error {
 	return func() error {
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
-			case key, ok := <-keysCh:
+			case rdi, ok := <-diCh:
 				if !ok {
 					return nil
 				}
-				if _, err := h.addData(key); err != nil {
+				di := h.rpcndf(&rdi)
+				_, cID, err := h.bal.LocateData(di)
+				if err != nil {
+					return err
+				}
+				if err := h.addData(cID, di); err != nil {
 					return err
 				}
 			}
@@ -234,29 +229,30 @@ func (h *Router) redistributeKeys() error {
 
 func (h *Router) redistributeKeysNode(n nodes.Node, ctx context.Context) func() error {
 	return func() (err error) {
-		res := make(map[nodes.Node][]string)
-		var keys []string
+		res := make(map[nodes.Node][]*rpcapi.DataItem)
+		var dis []*rpcapi.DataItem
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			keys, err = n.Explore()
+			dis, err = n.Explore()
 			if err != nil {
 				return err
 			}
 		}
 
-		for i := range keys {
+		for i := range dis {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
-				en, err := h.LocateKey(keys[i])
+				di := h.rpcndf(dis[i])
+				en, _, err := h.bal.LocateData(di)
 				if err != nil {
 					return err
 				}
 				if en.ID() != n.ID() {
-					res[en] = append(res[en], keys[i])
+					res[en] = append(res[en], di.RPCApi())
 				}
 			}
 		}
@@ -270,34 +266,4 @@ func (h *Router) redistributeKeysNode(n nodes.Node, ctx context.Context) func() 
 		}
 		return nil
 	}
-}
-
-func (h *Router) copies() error {
-	ks := make(map[string]map[string]string)
-	ns, err := h.GetNodes()
-	if err != nil {
-		return err
-	}
-	for _, n := range ns {
-		keys, err := n.Explore()
-		if err != nil {
-			return err
-		}
-		for _, key := range keys {
-			if ks[key] == nil {
-				ks[key] = make(map[string]string)
-			}
-			en, err := h.LocateKey(key)
-			if err != nil {
-				return err
-			}
-			ks[key][n.ID()] = en.ID()
-		}
-	}
-	for key := range ks {
-		if len(ks[key]) > 1 {
-			log.Println("COPY ", len(ns), len(ks[key]), key, ks[key])
-		}
-	}
-	return nil
 }

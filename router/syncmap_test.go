@@ -7,7 +7,7 @@ import (
 
 func TestSyncMap_Copy(t *testing.T) {
 	type fields struct {
-		s  map[string][]string
+		s map[string][]string
 	}
 	tests := []struct {
 		name   string
@@ -31,7 +31,7 @@ func TestSyncMap_Copy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := &SyncMap{
-				s:  tt.fields.s,
+				s: tt.fields.s,
 			}
 			got := sm.Copy()
 			assert.Equal(t, tt.want, got)
@@ -41,7 +41,7 @@ func TestSyncMap_Copy(t *testing.T) {
 
 func TestSyncMap_Put(t *testing.T) {
 	type fields struct {
-		s  map[string][]string
+		s map[string][]string
 	}
 	type args struct {
 		key   string
@@ -89,7 +89,7 @@ func TestSyncMap_Put(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := &SyncMap{
-				s:  tt.fields.s,
+				s: tt.fields.s,
 			}
 
 			sm.Put(tt.args.key, tt.args.value)
@@ -101,7 +101,7 @@ func TestSyncMap_Put(t *testing.T) {
 
 func TestSyncMap_Get(t *testing.T) {
 	type fields struct {
-		s  map[string][]string
+		s map[string][]string
 	}
 	type args struct {
 		key string
@@ -111,7 +111,7 @@ func TestSyncMap_Get(t *testing.T) {
 		fields fields
 		args   args
 		want   []string
-		wantOk  bool
+		wantOk bool
 	}{
 		{
 			name: "found",
@@ -145,7 +145,7 @@ func TestSyncMap_Get(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := &SyncMap{
-				s:  tt.fields.s,
+				s: tt.fields.s,
 			}
 			got, ok := sm.Get(tt.args.key)
 			assert.Equal(t, tt.want, got)
@@ -156,10 +156,10 @@ func TestSyncMap_Get(t *testing.T) {
 
 func TestSyncMap_Delete(t *testing.T) {
 	type fields struct {
-		s  map[string][]string
+		s map[string][]string
 	}
 	type args struct {
-		key   string
+		key string
 	}
 	tests := []struct {
 		name   string
@@ -176,7 +176,7 @@ func TestSyncMap_Delete(t *testing.T) {
 				},
 			},
 			args: args{
-				key:   "key-1",
+				key: "key-1",
 			},
 			want: map[string][]string{
 				"key-0": {"val-0-0", "val-0-1"},
@@ -186,7 +186,7 @@ func TestSyncMap_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := &SyncMap{
-				s:  tt.fields.s,
+				s: tt.fields.s,
 			}
 
 			sm.Delete(tt.args.key)

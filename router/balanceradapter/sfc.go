@@ -8,17 +8,16 @@ import (
 	"github.com/struckoff/kvstore/router/transform"
 	balancer "github.com/struckoff/sfcframework"
 	"github.com/struckoff/sfcframework/curve"
-	balancernode "github.com/struckoff/sfcframework/node"
 	balancertransform "github.com/struckoff/sfcframework/transform"
 	"math"
-	"sync"
 )
 
+//SFC - Space-filling curve adapter
 type SFC struct {
 	bal *balancer.Balancer
-	m   sync.RWMutex
 }
 
+//NewSFCBalancer create new space-filling curve powered balancer adapter instance
 func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 	var tf balancer.TransformFunc
 	var of balancer.OptimizerFunc
@@ -49,15 +48,18 @@ func NewSFCBalancer(conf *config.BalancerConfig) (*SFC, error) {
 	return &SFC{bal: bal}, nil
 }
 
+//AddNode to the balancer
 func (sb *SFC) AddNode(n nodes.Node) error {
 	return sb.bal.AddNode(n, true)
 
 }
 
+//RemoveNode from the balancer
 func (sb *SFC) RemoveNode(id string) error {
 	return sb.bal.RemoveNode(id, true)
 }
 
+//SetNodes wipes all nodes from the balancer and set a new ones
 func (sb *SFC) SetNodes(ns []nodes.Node) error {
 	for _, cell := range sb.bal.Space().Cells() {
 		cell.Truncate()
@@ -74,6 +76,7 @@ func (sb *SFC) SetNodes(ns []nodes.Node) error {
 	return nil
 }
 
+//LocateData on the space-filling curve
 func (sb *SFC) LocateData(di balancer.DataItem) (nodes.Node, uint64, error) {
 	nb, cid, err := sb.bal.LocateData(di)
 	if err != nil {
@@ -86,44 +89,47 @@ func (sb *SFC) LocateData(di balancer.DataItem) (nodes.Node, uint64, error) {
 	return n, cid, nil
 }
 
-func (sb *SFC) AddData(di balancer.DataItem) (nodes.Node, uint64, error) {
-	nb, cid, err := sb.bal.LocateData(di)
+//AddData adds data to the balancer considering capacity of nodes.
+func (sb *SFC) AddData(cID uint64, di balancer.DataItem) error {
+	err := sb.bal.AddData(cID, di)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
+	//
+	//ok, err := sb.checkNodeCapacity(nb, di)
+	//if err != nil {
+	//	return nil, 0, err
+	//}
+	//if !ok {
+	//	ncID, err := sb.findBetterCell(di, cid)
+	//	if err != nil {
+	//		return nil, 0, err
+	//	}
+	//	nb, _, err = sb.bal.RelocateData(di, ncID)
+	//	if err != nil {
+	//		return nil, 0, err
+	//	}
+	//} else {
+	//	nb, cid, err = sb.bal.AddData(di)
+	//	if err != nil {
+	//		return nil, 0, err
+	//	}
+	//}
+	//n, ok := nb.(nodes.Node)
+	//if !ok {
+	//	return nil, 0, errors.New("wrong node type")
+	//}
 
-	ok, err := sb.checkNodeCapacity(nb, di)
-	if err != nil {
-		return nil, 0, err
-	}
-	if !ok {
-		ncID, err := sb.findBetterCell(di, cid)
-		if err != nil {
-			return nil, 0, err
-		}
-		nb, _, err = sb.bal.RelocateData(di, ncID)
-		if err != nil {
-			return nil, 0, err
-		}
-	} else {
-		nb, cid, err = sb.bal.AddData(di)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-	n, ok := nb.(nodes.Node)
-	if !ok {
-		return nil, 0, errors.New("wrong node type")
-	}
-
-	return n, cid, nil
+	return nil
 }
 
+//RemoveData from the balancer.
 func (sb *SFC) RemoveData(di balancer.DataItem) error {
 	return sb.bal.RemoveData(di)
 }
 
-func (sb *SFC) checkNodeCapacity(n balancernode.Node, di balancer.DataItem) (bool, error) {
+//checkNodeCapacity - returns true if the node is able to receive data.
+func (sb *SFC) checkNodeCapacity(n nodes.Node, di balancer.DataItem) (bool, error) {
 	cgs := sb.bal.Space().CellGroups()
 	c, err := n.Capacity().Get()
 	if err != nil {
@@ -146,6 +152,7 @@ func (sb *SFC) checkNodeCapacity(n balancernode.Node, di balancer.DataItem) (boo
 	return false, nil
 }
 
+//findBetterCell returns the nearest cell id which ois able to receive data.
 func (sb *SFC) findBetterCell(di balancer.DataItem, cid uint64) (uint64, error) {
 	dis := math.MaxInt64
 	ncID := cid
@@ -153,7 +160,11 @@ func (sb *SFC) findBetterCell(di balancer.DataItem, cid uint64) (uint64, error) 
 	cgs := sb.bal.Space().CellGroups()
 	for i := range cgs {
 		l := cgs[i].TotalLoad()
-		c, err := cgs[i].Node().Capacity().Get()
+		n, ok := cgs[i].Node().(nodes.Node)
+		if !ok {
+			return 0, errors.New("unable to cast node")
+		}
+		c, err := n.Capacity().Get()
 		if err != nil {
 			continue
 		}
@@ -189,9 +200,8 @@ func (sb *SFC) findBetterCell(di balancer.DataItem, cid uint64) (uint64, error) 
 	return ncID, nil
 }
 
+//Nodes discovers nodes in the balancer
 func (sb *SFC) Nodes() ([]nodes.Node, error) {
-	//sb.m.RLock()
-	//defer sb.m.RUnlock()
 	nbs := sb.bal.Nodes()
 	ns := make([]nodes.Node, len(nbs))
 	for i := range nbs {
@@ -204,9 +214,8 @@ func (sb *SFC) Nodes() ([]nodes.Node, error) {
 	return ns, nil
 }
 
+//GetNode returns node by given ID.
 func (sb *SFC) GetNode(id string) (nodes.Node, error) {
-	//sb.m.RLock()
-	//defer sb.m.RUnlock()
 	nb, ok := sb.bal.GetNode(id)
 	if !ok {
 		return nil, errors.New("node not found")
@@ -218,21 +227,18 @@ func (sb *SFC) GetNode(id string) (nodes.Node, error) {
 	return n, nil
 }
 
+//SFC returns space-filling curve instance from the balancer.
 func (sb *SFC) SFC() curve.Curve {
-	//sb.m.RLock()
-	//defer sb.m.RUnlock()
 	return sb.bal.SFC()
 }
 
+//Optimize runs the optimization of the balancer space.
 func (sb *SFC) Optimize() error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	return sb.bal.Optimize()
 }
 
+//Reset wipes out the balancer.
 func (sb *SFC) Reset() error {
-	//sb.m.Lock()
-	//defer sb.m.Unlock()
 	for _, cg := range sb.bal.Space().CellGroups() {
 		cg.Truncate()
 	}
