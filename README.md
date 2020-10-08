@@ -1,11 +1,11 @@
-#KV Store
+# KV Store
 
 ## Descriptor
 Proof of work for [github.com/struckoff/sfcframework](http://github.com/struckoff/sfcframework)
 
 Distributed key-value storage of geo data. 
 
-##Router
+## Router
 /router service provides data balancing logic for the system.
 
 It also provides HTTP API.
@@ -33,8 +33,8 @@ GET /list
 ```   
 Return list of keys.
 
-###Config
-####Example
+### Config
+#### Example
 ```json
 {
   "Address": "0.0.0.0:9190",
@@ -53,10 +53,10 @@ Return list of keys.
 }
 ```
 
-##Store
+## Store
 Provides gRPC interface for bbolt DB to store data at the local file system.  
 
-###Config
+### Config
 #### Mode
  - standalone - will connect nodes between each other without external service. 
  - kvrouter - will try to use [router](#router) as discovery service.
