@@ -163,6 +163,10 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/struckoff/sfcframework v0.0.0-20200721141821-3ff84d300710 h1:8Tim91m5D7nRfU5WVQR+W+UQPAv8NmhRe1Yps5tGpx4=
 github.com/struckoff/sfcframework v0.0.0-20200924152342-26eb78d20f1a h1:x4zuMKmlMjoHntP+QIfdBxslqbJlsMCwvhUCn6nWZ9Q=
 github.com/struckoff/sfcframework v0.0.0-20200924152342-26eb78d20f1a/go.mod h1:8Awn38wRyF++tPT39b9x1KFYA+6SFxLmEw0/tmb2Uy8=
+github.com/struckoff/sfcframework v0.0.0-20201008211705-6b36fd9dbc0f h1:dXpkHnJK3kmTnnZWqXofOP/Ftk8dbbRKB2TJSQTwSVE=
+github.com/struckoff/sfcframework v0.0.0-20201008211705-6b36fd9dbc0f/go.mod h1:8Awn38wRyF++tPT39b9x1KFYA+6SFxLmEw0/tmb2Uy8=
+github.com/struckoff/sfcframework v0.0.0-20201008231356-1337aba3b022 h1:N036uJv1E/+UQ0KGr8TZwWdulpMkTHjdc6k/3D0Bt+w=
+github.com/struckoff/sfcframework v0.0.0-20201008231356-1337aba3b022/go.mod h1:8Awn38wRyF++tPT39b9x1KFYA+6SFxLmEw0/tmb2Uy8=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=

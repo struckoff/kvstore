@@ -14,12 +14,10 @@ require (
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.5.1
-	github.com/struckoff/sfcframework v0.0.0-20200924152342-26eb78d20f1a
+	github.com/struckoff/sfcframework v0.0.0-20201008231356-1337aba3b022
 	go.etcd.io/bbolt v1.3.5
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.32.0
 )
-
-replace github.com/struckoff/sfcframework v0.0.0-20200924152342-26eb78d20f1a => /home/struckoff/Projects/Go/src/github.com/struckoff/sfcframework
