@@ -37,7 +37,7 @@ func NewRouter(bal balanceradapter.Balancer, h nodehasher.Hasher, ndf dataitem.N
 }
 
 // AddNode adds node to kvrouter
-func (h *Router) AddNode(n nodes.Node) error {
+func (h *Router) AddNode(ctx context.Context, n nodes.Node) error {
 	h.opLock.Lock()
 	defer h.opLock.Unlock()
 	if err := h.bal.AddNode(n); err != nil {
@@ -46,11 +46,11 @@ func (h *Router) AddNode(n nodes.Node) error {
 		}
 		return err
 	}
-	if err := h.optimize(); err != nil {
+	if err := h.optimize(ctx); err != nil {
 		if err := h.removeNode(n.ID()); err != nil {
 			log.Println(errors.Wrap(err, "failed to RemoveNode"))
 		}
-		if err := h.optimize(); err != nil {
+		if err := h.optimize(ctx); err != nil {
 			return errors.Wrap(err, "failed to optimize")
 		}
 		return errors.Wrap(err, "failed to optimize")
@@ -131,7 +131,7 @@ func (h *Router) Hasher() nodehasher.Hasher {
 	return h.hasher
 }
 
-func (h *Router) fillBalancer() error {
+func (h *Router) fillBalancer(ctx context.Context) error {
 	if err := h.bal.Reset(); err != nil {
 		return err
 	}
@@ -146,12 +146,12 @@ func (h *Router) fillBalancer() error {
 	if len(ns) == 0 {
 		return nil
 	}
-	nseg, nsctx := errgroup.WithContext(context.Background())
+	nseg, nsctx := errgroup.WithContext(ctx)
 	addeg, addctx := errgroup.WithContext(nsctx)
-	addeg.Go(h.addKeysGoroutine(diCh, addctx))
+	addeg.Go(h.addKeysGoroutine(addctx, diCh))
 
 	for _, n := range ns {
-		nseg.Go(h.fillBalancerNode(n, diCh, addctx))
+		nseg.Go(h.fillBalancerNode(addctx, n, diCh))
 	}
 
 	err = nseg.Wait()
@@ -161,14 +161,14 @@ func (h *Router) fillBalancer() error {
 	return err
 }
 
-func (h *Router) fillBalancerNode(n nodes.Node, diCh chan<- rpcapi.DataItem, ctx context.Context) func() error {
+func (h *Router) fillBalancerNode(ctx context.Context, n nodes.Node, diCh chan<- rpcapi.DataItem) func() error {
 	return func() (err error) {
 		var dis []*rpcapi.DataItem
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			dis, err = n.Explore()
+			dis, err = n.Explore(ctx)
 			if err != nil {
 				return err
 			}
@@ -190,7 +190,7 @@ func (h *Router) fillBalancerNode(n nodes.Node, diCh chan<- rpcapi.DataItem, ctx
 	}
 }
 
-func (h *Router) addKeysGoroutine(diCh <-chan rpcapi.DataItem, ctx context.Context) func() error {
+func (h *Router) addKeysGoroutine(ctx context.Context, diCh <-chan rpcapi.DataItem) func() error {
 	return func() error {
 		for {
 			select {
@@ -213,14 +213,14 @@ func (h *Router) addKeysGoroutine(diCh <-chan rpcapi.DataItem, ctx context.Conte
 	}
 }
 
-func (h *Router) redistributeKeys() error {
+func (h *Router) redistributeKeys(ctx context.Context) error {
 	//var wg sync.WaitGroup
 
 	ns, err := h.GetNodes()
 	if err != nil {
 		return err
 	}
-	eg, ectx := errgroup.WithContext(context.Background())
+	eg, ectx := errgroup.WithContext(ctx)
 	for _, n := range ns {
 		eg.Go(h.redistributeKeysNode(n, ectx))
 	}
@@ -235,7 +235,7 @@ func (h *Router) redistributeKeysNode(n nodes.Node, ctx context.Context) func() 
 		case <-ctx.Done():
 			return nil
 		default:
-			dis, err = n.Explore()
+			dis, err = n.Explore(ctx)
 			if err != nil {
 				return err
 			}
@@ -260,7 +260,7 @@ func (h *Router) redistributeKeysNode(n nodes.Node, ctx context.Context) func() 
 		case <-ctx.Done():
 			return nil
 		default:
-			if err := n.Move(res); err != nil {
+			if err := n.Move(ctx, res); err != nil {
 				return err
 			}
 		}

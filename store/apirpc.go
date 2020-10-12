@@ -38,7 +38,7 @@ func (inn *LocalNode) RunRPCServer(conf *Config, errCh chan<- error) error {
 	return nil
 }
 
-func (inn *LocalNode) RPCStore(_ context.Context, in *rpcapi.KeyValue) (r *rpcapi.DataItem, err error) {
+func (inn *LocalNode) RPCStore(ctx context.Context, in *rpcapi.KeyValue) (r *rpcapi.DataItem, err error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -57,10 +57,10 @@ func (inn *LocalNode) RPCStore(_ context.Context, in *rpcapi.KeyValue) (r *rpcap
 	}()
 
 	time.Sleep(inn.rpclatency)
-	return inn.Store(in)
+	return inn.Store(ctx, in)
 }
 
-func (inn *LocalNode) RPCStorePairs(_ context.Context, in *rpcapi.KeyValues) (*rpcapi.DataItems, error) {
+func (inn *LocalNode) RPCStorePairs(ctx context.Context, in *rpcapi.KeyValues) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -79,14 +79,14 @@ func (inn *LocalNode) RPCStorePairs(_ context.Context, in *rpcapi.KeyValues) (*r
 	}()
 
 	time.Sleep(inn.rpclatency)
-	dis, err := inn.StorePairs(in.KVs)
+	dis, err := inn.StorePairs(ctx, in.KVs)
 	if err != nil {
 		return nil, err
 	}
 	return &rpcapi.DataItems{DIs: dis}, nil
 }
 
-func (inn *LocalNode) RPCReceive(_ context.Context, in *rpcapi.DataItems) (*rpcapi.KeyValues, error) {
+func (inn *LocalNode) RPCReceive(ctx context.Context, in *rpcapi.DataItems) (*rpcapi.KeyValues, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -105,10 +105,10 @@ func (inn *LocalNode) RPCReceive(_ context.Context, in *rpcapi.DataItems) (*rpca
 	}()
 
 	time.Sleep(inn.rpclatency)
-	return inn.Receive(in.DIs)
+	return inn.Receive(ctx, in.DIs)
 }
 
-func (inn *LocalNode) RPCRemove(_ context.Context, in *rpcapi.DataItems) (*rpcapi.DataItems, error) {
+func (inn *LocalNode) RPCRemove(ctx context.Context, in *rpcapi.DataItems) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -127,7 +127,7 @@ func (inn *LocalNode) RPCRemove(_ context.Context, in *rpcapi.DataItems) (*rpcap
 	}()
 
 	time.Sleep(inn.rpclatency)
-	dis, err := inn.Remove(in.DIs)
+	dis, err := inn.Remove(ctx, in.DIs)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (inn *LocalNode) RPCRemove(_ context.Context, in *rpcapi.DataItems) (*rpcap
 	return ds, nil
 }
 
-func (inn *LocalNode) RPCExplore(_ context.Context, _ *rpcapi.Empty) (*rpcapi.DataItems, error) {
+func (inn *LocalNode) RPCExplore(ctx context.Context, _ *rpcapi.Empty) (*rpcapi.DataItems, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -154,13 +154,13 @@ func (inn *LocalNode) RPCExplore(_ context.Context, _ *rpcapi.Empty) (*rpcapi.Da
 	}()
 
 	time.Sleep(inn.rpclatency)
-	dis, err := inn.Explore()
+	dis, err := inn.Explore(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &rpcapi.DataItems{DIs: dis}, nil
 }
-func (inn *LocalNode) RPCMeta(_ context.Context, _ *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
+func (inn *LocalNode) RPCMeta(ctx context.Context, _ *rpcapi.Empty) (*rpcapi.NodeMeta, error) {
 	start := time.Now()
 	defer func() {
 		end := time.Since(start)
@@ -179,11 +179,11 @@ func (inn *LocalNode) RPCMeta(_ context.Context, _ *rpcapi.Empty) (*rpcapi.NodeM
 	}()
 
 	time.Sleep(inn.rpclatency)
-	meta := inn.meta()
+	meta := inn.meta(ctx)
 	return meta, nil
 }
 
-func (inn *LocalNode) RPCMove(_ context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
+func (inn *LocalNode) RPCMove(ctx context.Context, in *rpcapi.MoveReq) (*rpcapi.Empty, error) {
 	//start := time.Now()
 	//defer func() {
 	//	end := time.Since(start)
@@ -218,7 +218,7 @@ func (inn *LocalNode) RPCMove(_ context.Context, in *rpcapi.MoveReq) (*rpcapi.Em
 		}
 		res[en] = kl.Keys.DIs
 	}
-	if err := inn.Move(res); err != nil {
+	if err := inn.Move(ctx, res); err != nil {
 		return nil, err
 	}
 

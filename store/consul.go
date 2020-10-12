@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"github.com/struckoff/kvstore/logger"
 	"github.com/struckoff/kvstore/router/nodes"
@@ -128,12 +129,15 @@ func (inn *LocalNode) serviceHandler(id uint64, data interface{}) {
 	if err := inn.kvr.SetNodes(ns); err != nil {
 		logger.Logger().Error("unable to set nodes", zap.Error(err))
 	}
-	locations, err := inn.keysLocations()
+	locations, err := inn.keysLocations(context.Background())
 	if err != nil {
 		logger.Logger().Error("unable to get keys locations", zap.Error(err))
 		return
 	}
-	inn.Move(locations)
+	if err := inn.Move(context.Background(), locations); err != nil {
+		logger.Logger().Error("local node move failed", zap.Error(err))
+		return
+	}
 
 	if swapped := atomic.CompareAndSwapInt64(inn.lwID, lwID, int64(id)); !swapped {
 		logger.Logger().Warn("last watcher ID was not swapped")
@@ -160,9 +164,9 @@ func (inn *LocalNode) registerExternalNode(id, addr string, nCh chan<- nodes.Nod
 }
 
 //keysLocations - returns keys which should be moved to another node
-func (inn *LocalNode) keysLocations() (map[nodes.Node][]*rpcapi.DataItem, error) {
+func (inn *LocalNode) keysLocations(ctx context.Context) (map[nodes.Node][]*rpcapi.DataItem, error) {
 	res := make(map[nodes.Node][]*rpcapi.DataItem)
-	dis, err := inn.Explore()
+	dis, err := inn.Explore(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	consulapi "github.com/hashicorp/consul/api"
@@ -65,7 +66,7 @@ func TestInternalNode_Meta(t *testing.T) {
 				c:          tt.fields.c,
 				db:         tt.fields.db,
 			}
-			got := n.Meta()
+			got := n.Meta(context.Background())
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -409,12 +410,12 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				},
 			}
 			for _, kv := range tt.args.kvs {
-				if _, err := n.Store(kv); (err != nil) != tt.wantErr {
+				if _, err := n.Store(context.Background(), kv); (err != nil) != tt.wantErr {
 					t.Errorf("Store() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 
-			explore, err := n.Explore()
+			explore, err := n.Explore(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Before remove: Explore() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -428,21 +429,21 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				keys[i] = tt.wantBeforeRemove.KVs[i].Key
 			}
 
-			kvs, err := n.Receive(keys)
+			kvs, err := n.Receive(context.Background(), keys)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Before remove: Receive error = %w", err)
 			}
 
 			assert.Equal(t, tt.wantBeforeRemove, kvs)
 
-			_, err = n.Remove(tt.args.removeKeys)
+			_, err = n.Remove(context.Background(), tt.args.removeKeys)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
 
-			explore, err = n.Explore()
+			explore, err = n.Explore(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("After remove: Explore() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -451,7 +452,7 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 			//sort.Strings(tt.wantExploreAfterRemove)
 			assert.Equal(t, tt.wantExploreAfterRemove, explore)
 
-			kvs, err = n.Receive(keys)
+			kvs, err = n.Receive(context.Background(), keys)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("After remove: Receive error = %w", err)
 			}
@@ -461,7 +462,7 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 				keys[i] = tt.wantAfterRemove.KVs[i].Key
 			}
 
-			kvs, err = n.Receive(keys)
+			kvs, err = n.Receive(context.Background(), keys)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Before remove: Receive error = %w", err)
 			}
@@ -473,16 +474,16 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 
 func TestNewLocalNode_DBErr(t *testing.T) {
 	lnn := &LocalNode{db: &bolt.DB{}}
-	_, err := lnn.Store(&rpcapi.KeyValue{Key: &rpcapi.DataItem{ID: []byte("test-key")}})
+	_, err := lnn.Store(context.Background(), &rpcapi.KeyValue{Key: &rpcapi.DataItem{ID: []byte("test-key")}})
 	assert.Error(t, err)
 
-	_, err = lnn.Receive([]*rpcapi.DataItem{{ID: []byte("test-key")}})
+	_, err = lnn.Receive(context.Background(), []*rpcapi.DataItem{{ID: []byte("test-key")}})
 	assert.Error(t, err)
 
-	_, err = lnn.Remove([]*rpcapi.DataItem{{ID: []byte("test-key")}})
+	_, err = lnn.Remove(context.Background(), []*rpcapi.DataItem{{ID: []byte("test-key")}})
 	assert.Error(t, err)
 
-	_, err = lnn.Explore()
+	_, err = lnn.Explore(context.Background())
 	assert.Error(t, err)
 }
 
@@ -858,7 +859,7 @@ func TestLocalNode_Move(t *testing.T) {
 
 	inn := &LocalNode{db: db}
 
-	err = inn.Move(nk)
+	err = inn.Move(context.Background(), nk)
 	assert.NoError(t, err)
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -869,11 +870,11 @@ func TestLocalNode_Move(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = inn.Move(nk)
+	err = inn.Move(context.Background(), nk)
 	assert.NoError(t, err)
 
 	inn = &LocalNode{db: &bolt.DB{}}
-	err = inn.Move(nk)
+	err = inn.Move(context.Background(), nk)
 	assert.NoError(t, err)
 }
 
@@ -895,12 +896,12 @@ func TestLocalNode_StorePairs(t *testing.T) {
 
 	inn := &LocalNode{db: db}
 
-	_, err = inn.StorePairs(pairs)
+	_, err = inn.StorePairs(context.Background(), pairs)
 	assert.NoError(t, err)
 
 	inn = &LocalNode{db: &bolt.DB{}}
 
-	_, err = inn.StorePairs(pairs)
+	_, err = inn.StorePairs(context.Background(), pairs)
 	assert.Error(t, err)
 }
 

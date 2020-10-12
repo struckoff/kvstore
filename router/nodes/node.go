@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"github.com/struckoff/kvstore/router/rpcapi"
 	balancernode "github.com/struckoff/sfcframework/node"
 )
@@ -8,11 +9,11 @@ import (
 type Node interface {
 	balancernode.Node
 	Capacity() Capacity
-	Store(*rpcapi.KeyValue) (*rpcapi.DataItem, error)          // Save value for a given key
-	StorePairs([]*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) // Save multiple key-value pairs
-	Receive([]*rpcapi.DataItem) (*rpcapi.KeyValues, error)     // Return value for a given key
-	Remove([]*rpcapi.DataItem) ([]*rpcapi.DataItem, error)     // Remove value for a given key
-	Explore() ([]*rpcapi.DataItem, error)                      // Return all keys in a cluster
-	Meta() *rpcapi.NodeMeta                                    // Return information about cluster units
-	Move(map[Node][]*rpcapi.DataItem) error                    // Move kv pairs to another node
+	Store(context.Context, *rpcapi.KeyValue) (*rpcapi.DataItem, error)          // Save value for a given key
+	StorePairs(context.Context, []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) // Save multiple key-value pairs
+	Receive(context.Context, []*rpcapi.DataItem) (*rpcapi.KeyValues, error)     // Return value for a given key
+	Remove(context.Context, []*rpcapi.DataItem) ([]*rpcapi.DataItem, error)     // Remove value for a given key
+	Explore(context.Context) ([]*rpcapi.DataItem, error)                        // Return all keys in a cluster
+	Meta(context.Context) *rpcapi.NodeMeta                                      // Return information about cluster units
+	Move(context.Context, map[Node][]*rpcapi.DataItem) error                    // Move kv pairs to another node
 }

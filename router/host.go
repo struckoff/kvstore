@@ -73,7 +73,7 @@ type Host struct {
 	httplatency time.Duration
 }
 
-func (h *Host) RPCRegister(_ context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
+func (h *Host) RPCRegister(ctx context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empty, error) {
 	en, err := nodes.NewExternalNode(in, h.kvr.Hasher())
 	if err != nil {
 		logger.Logger().Error("Error registering node", zap.Error(err))
@@ -88,7 +88,7 @@ func (h *Host) RPCRegister(_ context.Context, in *rpcapi.NodeMeta) (*rpcapi.Empt
 		return nil, errors.Wrap(err, "failed to create ttl check")
 	}
 	h.checks.Store(en.ID(), check)
-	if err := h.kvr.AddNode(en); err != nil {
+	if err := h.kvr.AddNode(ctx, en); err != nil {
 		logger.Logger().Error("Error adding node", zap.String("Node", en.ID()), zap.Error(err))
 		return nil, errors.Wrap(err, "failed to addNode")
 	}
@@ -121,7 +121,7 @@ func (h *Host) onRemoveHandler(nodeID string) func() {
 			logger.Logger().Error("Error removing node", zap.String("Node", nodeID), zap.Error(err))
 			return
 		}
-		if err := h.kvr.Optimize(); err != nil {
+		if err := h.kvr.Optimize(context.Background()); err != nil {
 			logger.Logger().Error("Error redistributing keys", zap.Error(err))
 			return
 		}

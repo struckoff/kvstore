@@ -48,7 +48,7 @@ func (inn *LocalNode) routerAnnounce(conf *Config) error {
 		return errors.Wrap(err, "failed to parse health check timeout")
 	}
 
-	meta := inn.Meta()
+	meta := inn.Meta(context.Background())
 	meta.Check = &rpcapi.HealthCheck{
 		Timeout:                        (checkInterval + checkTimeout).String(),
 		DeregisterCriticalServiceAfter: conf.Health.DeregisterCriticalServiceAfter,

@@ -27,7 +27,7 @@ func (c *Capacity) Add(arg float64) {
 	//c.l.Unlock()
 }
 
-func (c *Capacity) RPCGet(ctx context.Context, in *rpcapi.Empty) (*rpcapi.Capacity, error) {
+func (c *Capacity) RPCGet(_ context.Context, _ *rpcapi.Empty) (*rpcapi.Capacity, error) {
 	c.l.RLock()
 	defer c.l.RUnlock()
 	return &rpcapi.Capacity{Capacity: c.c}, nil

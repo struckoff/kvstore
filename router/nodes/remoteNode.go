@@ -121,9 +121,9 @@ func (n *RemoteNode) Hash() uint64 {
 }
 
 //Save value for a given key on the remote node
-func (n *RemoteNode) Store(kv *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
+func (n *RemoteNode) Store(ctx context.Context, kv *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
 	logger.Logger().Debug("store key", zap.String("Key", string(kv.Key.ID)), zap.String("Node", n.id))
-	di, err := n.rpcclient.RPCStore(context.TODO(), kv)
+	di, err := n.rpcclient.RPCStore(ctx, kv)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +131,10 @@ func (n *RemoteNode) Store(kv *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
 }
 
 // Save key/value pairs on remote node
-func (n *RemoteNode) StorePairs(pairs []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
+func (n *RemoteNode) StorePairs(ctx context.Context, pairs []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
 	logger.Logger().Debug("store pairs", zap.String("Node", n.id))
 	req := rpcapi.KeyValues{KVs: pairs}
-	dis, err := n.rpcclient.RPCStorePairs(context.TODO(), &req)
+	dis, err := n.rpcclient.RPCStorePairs(ctx, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -142,18 +142,18 @@ func (n *RemoteNode) StorePairs(pairs []*rpcapi.KeyValue) ([]*rpcapi.DataItem, e
 }
 
 //Receive value for a given key from the remote node
-func (n *RemoteNode) Receive(dis []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
+func (n *RemoteNode) Receive(ctx context.Context, dis []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
 	logger.Logger().Debug("receive keys", zap.String("Node", n.id))
 	req := rpcapi.DataItems{DIs: dis}
-	res, err := n.rpcclient.RPCReceive(context.TODO(), &req)
+	res, err := n.rpcclient.RPCReceive(ctx, &req)
 	return res, err
 }
 
 // Explore returns the list of keys on remote node
-func (n *RemoteNode) Explore() ([]*rpcapi.DataItem, error) {
+func (n *RemoteNode) Explore(ctx context.Context) ([]*rpcapi.DataItem, error) {
 	logger.Logger().Debug("exploring", zap.String("Node", n.id))
 	req := rpcapi.Empty{}
-	dis, err := n.rpcclient.RPCExplore(context.TODO(), &req)
+	dis, err := n.rpcclient.RPCExplore(ctx, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -161,10 +161,10 @@ func (n *RemoteNode) Explore() ([]*rpcapi.DataItem, error) {
 }
 
 // Remove value for a given key
-func (n *RemoteNode) Remove(dis []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
+func (n *RemoteNode) Remove(ctx context.Context, dis []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
 	logger.Logger().Debug("remove keys", zap.String("Node", n.id))
 	req := rpcapi.DataItems{DIs: dis}
-	ds, err := n.rpcclient.RPCRemove(context.TODO(), &req)
+	ds, err := n.rpcclient.RPCRemove(ctx, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (n *RemoteNode) Remove(dis []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) 
 }
 
 // Return meta information about the node
-func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
+func (n *RemoteNode) Meta(ctx context.Context) *rpcapi.NodeMeta {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	cp, err := n.c.Get()
@@ -190,16 +190,21 @@ func (n *RemoteNode) Meta() *rpcapi.NodeMeta {
 }
 
 // Move keys from remote node to another remote node.
-func (n *RemoteNode) Move(nk map[Node][]*rpcapi.DataItem) error {
+func (n *RemoteNode) Move(ctx context.Context, nk map[Node][]*rpcapi.DataItem) error {
 	mr := &rpcapi.MoveReq{}
 	for en, dis := range nk {
-		meta := en.Meta()
-		kl := &rpcapi.KeyList{
-			Node: meta,
-			Keys: &rpcapi.DataItems{DIs: dis},
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			meta := en.Meta(ctx)
+			kl := &rpcapi.KeyList{
+				Node: meta,
+				Keys: &rpcapi.DataItems{DIs: dis},
+			}
+			mr.KLs = append(mr.KLs, kl)
 		}
-		mr.KLs = append(mr.KLs, kl)
 	}
-	_, err := n.rpcclient.RPCMove(context.TODO(), mr)
+	_, err := n.rpcclient.RPCMove(ctx, mr)
 	return err
 }

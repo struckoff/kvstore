@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/struckoff/kvstore/mocks"
@@ -24,7 +25,7 @@ func TestRouter_AddNode(t *testing.T) {
 	h := &Router{
 		bal: mbal,
 	}
-	if err := h.AddNode(mn); err != nil {
+	if err := h.AddNode(context.Background(), mn); err != nil {
 		t.Errorf("AddNode() error = %v", err)
 	}
 

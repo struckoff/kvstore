@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
 	node "github.com/struckoff/sfcframework/node"
 
@@ -32,13 +34,13 @@ func (_m *Node) Capacity() nodes.Capacity {
 	return r0
 }
 
-// Explore provides a mock function with given fields:
-func (_m *Node) Explore() ([]*rpcapi.DataItem, error) {
-	ret := _m.Called()
+// Explore provides a mock function with given fields: _a0
+func (_m *Node) Explore(_a0 context.Context) ([]*rpcapi.DataItem, error) {
+	ret := _m.Called(_a0)
 
 	var r0 []*rpcapi.DataItem
-	if rf, ok := ret.Get(0).(func() []*rpcapi.DataItem); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []*rpcapi.DataItem); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*rpcapi.DataItem)
@@ -46,8 +48,8 @@ func (_m *Node) Explore() ([]*rpcapi.DataItem, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -83,13 +85,13 @@ func (_m *Node) ID() string {
 	return r0
 }
 
-// Meta provides a mock function with given fields:
-func (_m *Node) Meta() *rpcapi.NodeMeta {
-	ret := _m.Called()
+// Meta provides a mock function with given fields: _a0
+func (_m *Node) Meta(_a0 context.Context) *rpcapi.NodeMeta {
+	ret := _m.Called(_a0)
 
 	var r0 *rpcapi.NodeMeta
-	if rf, ok := ret.Get(0).(func() *rpcapi.NodeMeta); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) *rpcapi.NodeMeta); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*rpcapi.NodeMeta)
@@ -99,13 +101,13 @@ func (_m *Node) Meta() *rpcapi.NodeMeta {
 	return r0
 }
 
-// Move provides a mock function with given fields: _a0
-func (_m *Node) Move(_a0 map[nodes.Node][]*rpcapi.DataItem) error {
-	ret := _m.Called(_a0)
+// Move provides a mock function with given fields: _a0, _a1
+func (_m *Node) Move(_a0 context.Context, _a1 map[nodes.Node][]*rpcapi.DataItem) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(map[nodes.Node][]*rpcapi.DataItem) error); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, map[nodes.Node][]*rpcapi.DataItem) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -129,13 +131,13 @@ func (_m *Node) Power() node.Power {
 	return r0
 }
 
-// Receive provides a mock function with given fields: _a0
-func (_m *Node) Receive(_a0 []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
-	ret := _m.Called(_a0)
+// Receive provides a mock function with given fields: _a0, _a1
+func (_m *Node) Receive(_a0 context.Context, _a1 []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *rpcapi.KeyValues
-	if rf, ok := ret.Get(0).(func([]*rpcapi.DataItem) *rpcapi.KeyValues); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcapi.DataItem) *rpcapi.KeyValues); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*rpcapi.KeyValues)
@@ -143,8 +145,8 @@ func (_m *Node) Receive(_a0 []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*rpcapi.DataItem) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcapi.DataItem) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -152,13 +154,13 @@ func (_m *Node) Receive(_a0 []*rpcapi.DataItem) (*rpcapi.KeyValues, error) {
 	return r0, r1
 }
 
-// Remove provides a mock function with given fields: _a0
-func (_m *Node) Remove(_a0 []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
-	ret := _m.Called(_a0)
+// Remove provides a mock function with given fields: _a0, _a1
+func (_m *Node) Remove(_a0 context.Context, _a1 []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 []*rpcapi.DataItem
-	if rf, ok := ret.Get(0).(func([]*rpcapi.DataItem) []*rpcapi.DataItem); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcapi.DataItem) []*rpcapi.DataItem); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*rpcapi.DataItem)
@@ -166,8 +168,8 @@ func (_m *Node) Remove(_a0 []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*rpcapi.DataItem) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcapi.DataItem) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -175,13 +177,13 @@ func (_m *Node) Remove(_a0 []*rpcapi.DataItem) ([]*rpcapi.DataItem, error) {
 	return r0, r1
 }
 
-// Store provides a mock function with given fields: _a0
-func (_m *Node) Store(_a0 *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
-	ret := _m.Called(_a0)
+// Store provides a mock function with given fields: _a0, _a1
+func (_m *Node) Store(_a0 context.Context, _a1 *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *rpcapi.DataItem
-	if rf, ok := ret.Get(0).(func(*rpcapi.KeyValue) *rpcapi.DataItem); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, *rpcapi.KeyValue) *rpcapi.DataItem); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*rpcapi.DataItem)
@@ -189,8 +191,8 @@ func (_m *Node) Store(_a0 *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*rpcapi.KeyValue) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, *rpcapi.KeyValue) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -198,13 +200,13 @@ func (_m *Node) Store(_a0 *rpcapi.KeyValue) (*rpcapi.DataItem, error) {
 	return r0, r1
 }
 
-// StorePairs provides a mock function with given fields: _a0
-func (_m *Node) StorePairs(_a0 []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
-	ret := _m.Called(_a0)
+// StorePairs provides a mock function with given fields: _a0, _a1
+func (_m *Node) StorePairs(_a0 context.Context, _a1 []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 []*rpcapi.DataItem
-	if rf, ok := ret.Get(0).(func([]*rpcapi.KeyValue) []*rpcapi.DataItem); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcapi.KeyValue) []*rpcapi.DataItem); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*rpcapi.DataItem)
@@ -212,8 +214,8 @@ func (_m *Node) StorePairs(_a0 []*rpcapi.KeyValue) ([]*rpcapi.DataItem, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*rpcapi.KeyValue) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcapi.KeyValue) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -50,8 +50,9 @@ func (h *Router) HTTPHandler() *httprouter.Router {
 //	}
 //}
 
-func (h *Router) CallOptimize(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	if err := h.Optimize(); err != nil {
+func (h *Router) CallOptimize(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := r.Context()
+	if err := h.Optimize(ctx); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		logger.Logger().Error("optimizer error", zap.Error(err))
 	}
@@ -70,6 +71,7 @@ func (h *Router) Config(w http.ResponseWriter, _ *http.Request, _ httprouter.Par
 
 // Store value for a given key on the remote node
 func (h *Router) Store(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
@@ -108,7 +110,7 @@ func (h *Router) Store(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 		Key:   di.RPCApi(),
 		Value: b,
 	}
-	rdi, err := n.Store(kv)
+	rdi, err := n.Store(ctx, kv)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,12 +125,13 @@ func (h *Router) Store(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 
 //Receive value for a given key from the remote node
 func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
 	k := ps.ByName("key")
 	keys := strings.Split(k[1:], "/")
-	nmk, err := h.keysOnNodes(keys)
+	nmk, err := h.keysOnNodes(ctx, keys)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -136,17 +139,17 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 	kvsCh := make(chan *rpcapi.KeyValues, len(nmk))
 	for n, dis := range nmk {
-		go func(n nodes.Node, dis []*rpcapi.DataItem, kvsCh chan<- *rpcapi.KeyValues) {
+		go func(ctx context.Context, n nodes.Node, dis []*rpcapi.DataItem, kvsCh chan<- *rpcapi.KeyValues) {
 			var kvs *rpcapi.KeyValues
 			defer func() {
 				kvsCh <- kvs
 			}()
-			kvs, err = n.Receive(dis)
+			kvs, err = n.Receive(ctx, dis)
 			if err != nil {
 				logger.Logger().Error("recieve error", zap.Error(err))
 				return
 			}
-		}(n, dis, kvsCh)
+		}(ctx, n, dis, kvsCh)
 	}
 	type rec struct {
 		Key   string
@@ -157,13 +160,17 @@ func (h *Router) Receive(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	//resp.KVs = make([]*rpcapi.KeyValue, 0)
 	resp := make([]rec, 0)
 	for i := 0; i < len(nmk); i++ {
-		kvs := <-kvsCh
-		if kvs == nil {
-			continue
-		}
-		for _, kv := range kvs.KVs {
-			if kv.Found {
-				resp = append(resp, rec{string(kv.Key.ID), string(kv.Value)})
+		select {
+		case <-ctx.Done():
+			return
+		case kvs := <-kvsCh:
+			if kvs == nil {
+				continue
+			}
+			for _, kv := range kvs.KVs {
+				if kv.Found {
+					resp = append(resp, rec{string(kv.Key.ID), string(kv.Value)})
+				}
 			}
 		}
 	}
@@ -178,27 +185,34 @@ func byteSlice2String(bs []byte) string {
 	return *(*string)(unsafe.Pointer(&bs))
 }
 
-func (h *Router) keysOnNodes(keys []string) (map[nodes.Node][]*rpcapi.DataItem, error) {
+func (h *Router) keysOnNodes(ctx context.Context, keys []string) (map[nodes.Node][]*rpcapi.DataItem, error) {
 	nmk := make(map[nodes.Node][]*rpcapi.DataItem)
 	for i := range keys {
-		di, err := h.ndf(keys[i], 0)
-		if err != nil {
-			return nil, err
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			di, err := h.ndf(keys[i], 0)
+			if err != nil {
+				return nil, err
+			}
+			n, _, err := h.bal.LocateData(di)
+			if err != nil {
+				return nil, err
+			}
+			nmk[n] = append(nmk[n], di.RPCApi())
 		}
-		n, _, err := h.bal.LocateData(di)
-		if err != nil {
-			return nil, err
-		}
-		nmk[n] = append(nmk[n], di.RPCApi())
+
 	}
 	return nmk, nil
 }
 
 //Explore returns a list of keys on nodes
-func (h *Router) Explore(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	h.opLock.Lock()
-	defer h.opLock.Unlock()
-	res, err := h.nodeKeys()
+func (h *Router) Explore(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := r.Context()
+	//h.opLock.Lock()
+	//defer h.opLock.Unlock()
+	res, err := h.nodeKeys(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -214,14 +228,14 @@ func (h *Router) Explore(w http.ResponseWriter, _ *http.Request, _ httprouter.Pa
 	}
 }
 
-func (h *Router) cidToKeys() (*SyncMap, error) {
+func (h *Router) cidToKeys(ctx context.Context) (*SyncMap, error) {
 	sm := NewSyncMap()
 	ns, err := h.bal.Nodes()
 	if err != nil {
 		return nil, err
 	}
 
-	eg, ectx := errgroup.WithContext(context.Background())
+	eg, ectx := errgroup.WithContext(ctx)
 	for _, n := range ns {
 		eg.Go(h.cidToKeysNode(n, sm, ectx))
 	}
@@ -238,7 +252,7 @@ func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) f
 		case <-ctx.Done():
 			return nil
 		default:
-			rdis, err = n.Explore()
+			rdis, err = n.Explore(ctx)
 			if err != nil {
 				return err
 			}
@@ -266,8 +280,9 @@ func (h *Router) cidToKeysNode(n nodes.Node, sm *SyncMap, ctx context.Context) f
 	}
 }
 
-func (h *Router) Cid(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	sm, err := h.cidToKeys()
+func (h *Router) Cid(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := r.Context()
+	sm, err := h.cidToKeys(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -285,8 +300,9 @@ func (h *Router) Cid(w http.ResponseWriter, _ *http.Request, _ httprouter.Params
 }
 
 // Nodes returns a list of nodes
-func (h *Router) Nodes(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	metas, err := h.nodes()
+func (h *Router) Nodes(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := r.Context()
+	metas, err := h.nodes(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -296,19 +312,24 @@ func (h *Router) Nodes(w http.ResponseWriter, _ *http.Request, _ httprouter.Para
 	}
 }
 
-func (h *Router) nodes() ([]*rpcapi.NodeMeta, error) {
+func (h *Router) nodes(ctx context.Context) ([]*rpcapi.NodeMeta, error) {
 	ns, err := h.bal.Nodes()
 	if err != nil {
 		return nil, err
 	}
 	metas := make([]*rpcapi.NodeMeta, len(ns))
 	for i, n := range ns {
-		metas[i] = n.Meta()
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			metas[i] = n.Meta(ctx)
+		}
 	}
 	return metas, nil
 }
 
-func (h *Router) nodeKeys() (*SyncMap, error) {
+func (h *Router) nodeKeys(ctx context.Context) (*SyncMap, error) {
 	var wg sync.WaitGroup
 	res := NewSyncMap()
 	ns, err := h.bal.Nodes()
@@ -317,39 +338,44 @@ func (h *Router) nodeKeys() (*SyncMap, error) {
 	}
 	for _, n := range ns {
 		wg.Add(1)
-		go func(wg *sync.WaitGroup, n nodes.Node, sm *SyncMap) {
+		go func(ctx context.Context, wg *sync.WaitGroup, n nodes.Node, sm *SyncMap) {
 			defer wg.Done()
-			dis, err := n.Explore()
+			dis, err := n.Explore(ctx)
 			if err != nil {
 				logger.Logger().Error("node keys error", zap.String("Node", n.ID()), zap.Error(err))
 				return
 			}
-			keys := make([]string, len(dis))
-			for i := range keys {
-				keys[i] = string(dis[i].ID)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				keys := make([]string, len(dis))
+				for i := range keys {
+					keys[i] = string(dis[i].ID)
+				}
+				sm.Put(n.ID(), keys)
 			}
-			sm.Put(n.ID(), keys)
-		}(&wg, n, res)
+		}(ctx, &wg, n, res)
 	}
 	wg.Wait()
 	return res, nil
 }
 
-func (h *Router) Optimize() error {
-	h.opLock.Lock()
-	defer h.opLock.Unlock()
-	return h.optimize()
+func (h *Router) Optimize(ctx context.Context) error {
+	//h.opLock.Lock()
+	//defer h.opLock.Unlock()
+	return h.optimize(ctx)
 }
 
-func (h *Router) optimize() error {
+func (h *Router) optimize(ctx context.Context) error {
 	logger.Logger().Info("Optimize started")
-	if err := h.fillBalancer(); err != nil {
+	if err := h.fillBalancer(ctx); err != nil {
 		return err
 	}
 	if err := h.bal.Optimize(); err != nil {
 		return err
 	}
-	if err := h.redistributeKeys(); err != nil {
+	if err := h.redistributeKeys(ctx); err != nil {
 		return err
 	}
 	logger.Logger().Info("Optimize complete")
