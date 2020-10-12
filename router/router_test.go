@@ -13,14 +13,14 @@ import (
 
 func TestRouter_AddNode(t *testing.T) {
 	mn := &mocks.Node{}
-	mn.On("Explore").Return([]*rpcapi.DataItem{}, nil)
-	mn.On("Move", mock.Anything).Return(nil)
+	mn.On("Explore", mock.Anything).Return([]*rpcapi.DataItem{}, nil)
+	mn.On("Move", mock.Anything, mock.Anything).Return(nil)
 
 	mbal := &mocks.Balancer{}
 	mbal.On("AddNode", mn).Return(nil)
 	mbal.On("Reset").Return(nil)
 	mbal.On("Nodes").Return([]nodes.Node{mn}, nil)
-	mbal.On("Optimize").Return(nil)
+	mbal.On("Optimize", mock.Anything).Return(nil)
 	//mbal.On("AddNode", mock.Anything).Return(nil)
 	h := &Router{
 		bal: mbal,

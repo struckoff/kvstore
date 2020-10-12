@@ -380,7 +380,11 @@ func TestInternalNode_StoreExploreRemove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dbpath := tempfile()
-			defer os.Remove(dbpath)
+			defer func(dbpath string) {
+				if err := os.Remove(dbpath); err != nil {
+					t.Fatal(err)
+				}
+			}(dbpath)
 			db, err := bolt.Open(dbpath, 0666, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -621,7 +625,11 @@ func TestNewLocalNode_KVR(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dbpath := tempfile()
-			defer os.Remove(dbpath)
+			defer func(dbpath string) {
+				if err := os.Remove(dbpath); err != nil {
+					t.Fatal(err)
+				}
+			}(dbpath)
 			db, err := bolt.Open(dbpath, 0666, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -785,7 +793,11 @@ func TestNewLocalNode_Consul(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dbpath := tempfile()
-			defer os.Remove(dbpath)
+			defer func(dbpath string) {
+				if err := os.Remove(dbpath); err != nil {
+					t.Fatal(err)
+				}
+			}(dbpath)
 			db, err := bolt.Open(dbpath, 0666, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -833,22 +845,26 @@ func TestLocalNode_SetHash(t *testing.T) {
 
 func TestLocalNode_Move(t *testing.T) {
 	dbpath := tempfile()
-	defer os.Remove(dbpath)
+	defer func(dbpath string) {
+		if err := os.Remove(dbpath); err != nil {
+			t.Fatal(err)
+		}
+	}(dbpath)
 	db, err := bolt.Open(dbpath, 0666, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	en := &mocks.Node{}
-	en.On("StorePairs", mock.Anything).Return(nil, nil)
+	en.On("StorePairs", mock.Anything, mock.Anything).Return(nil, nil)
 	en.On("ID", mock.Anything).Return("test-en")
 
 	en2 := &mocks.Node{}
-	en2.On("StorePairs", mock.Anything).Return(nil, nil)
+	en2.On("StorePairs", mock.Anything, mock.Anything).Return(nil, nil)
 	en2.On("ID", mock.Anything).Return("test-en")
 
 	enErr := &mocks.Node{}
-	enErr.On("StorePairs", mock.Anything).Return(nil, errors.New("test err"))
+	enErr.On("StorePairs", mock.Anything, mock.Anything).Return(nil, errors.New("test err"))
 	enErr.On("ID", mock.Anything).Return("test-en")
 
 	nk := map[nodes.Node][]*rpcapi.DataItem{
@@ -880,7 +896,11 @@ func TestLocalNode_Move(t *testing.T) {
 
 func TestLocalNode_StorePairs(t *testing.T) {
 	dbpath := tempfile()
-	defer os.Remove(dbpath)
+	defer func(dbpath string) {
+		if err := os.Remove(dbpath); err != nil {
+			t.Fatal(err)
+		}
+	}(dbpath)
 	db, err := bolt.Open(dbpath, 0666, nil)
 	if err != nil {
 		t.Fatal(err)

@@ -163,33 +163,33 @@ func TestRouter_HTTPHandler_API(t *testing.T) {
 
 				mn := &mocks.Node{}
 				mn.On("ID").Return(name)
-				mn.On("Meta").Return(&rpcapi.NodeMeta{ID: name})
-				mn.On("Explore").Return(dis, nil)
+				mn.On("Meta", mock.Anything).Return(&rpcapi.NodeMeta{ID: name})
+				mn.On("Explore", mock.Anything).Return(dis, nil)
 				if len(dis) > 0 {
-					mn.On("Store", mock.AnythingOfType("*rpcapi.KeyValue")).Return(dis[0], nil)
+					mn.On("Store", mock.Anything, mock.AnythingOfType("*rpcapi.KeyValue")).Return(dis[0], nil)
 				} else {
-					mn.On("Store", mock.AnythingOfType("*rpcapi.KeyValue")).Return(nil, nil)
+					mn.On("Store", mock.Anything, mock.AnythingOfType("*rpcapi.KeyValue")).Return(nil, nil)
 				}
-				mn.On("Move", mock.Anything).Return(nil)
+				mn.On("Move", mock.Anything, mock.Anything).Return(nil)
 				mn.On("Capacity", mock.Anything).Return(c)
 				ns = append(ns, mn)
 			}
 			sort.Slice(ns, func(i, j int) bool { return strings.Compare(ns[i].ID(), ns[j].ID()) < 1 })
 
 			mn := &mocks.Node{}
-			mn.On("Store", mock.AnythingOfType("*rpcapi.KeyValue")).Return(&rpcapi.DataItem{ID: []byte("test-node-1-key-1")}, nil)
+			mn.On("Store", mock.Anything, mock.AnythingOfType("*rpcapi.KeyValue")).Return(&rpcapi.DataItem{ID: []byte("test-node-1-key-1")}, nil)
 			kvs := &rpcapi.KeyValues{
 				KVs: []*rpcapi.KeyValue{{Key: &rpcapi.DataItem{ID: []byte("test-node-1-key-1")}, Value: []byte("test-node-1"), Found: true}},
 			}
-			mn.On("Receive", mock.AnythingOfType("[]*rpcapi.DataItem")).Return(kvs, nil)
+			mn.On("Receive", mock.Anything, mock.AnythingOfType("[]*rpcapi.DataItem")).Return(kvs, nil)
 			mn.On("ID").Return("test-node-1")
-			mn.On("Move", mock.Anything).Return(nil)
+			mn.On("Move", mock.Anything, mock.Anything).Return(nil)
 
 			mbal := &mocks.Balancer{}
 			mbal.On("LocateData", mock.Anything).Return(mn, uint64(1), nil)
 			mbal.On("Nodes").Return(ns, nil)
 			mbal.On("Reset").Return(nil)
-			mbal.On("Optimize").Return(nil)
+			mbal.On("Optimize", mock.Anything).Return(nil)
 			mbal.On("AddData", mock.AnythingOfType("uint64"), mock.Anything).Return(nil)
 			mbal.On("SetNodes", mock.Anything).Return(nil)
 			mbal.On("AddNode", mock.Anything).Return(nil)
