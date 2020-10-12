@@ -3,7 +3,7 @@
 
 # KV Store
 
-## Descriptor
+## Description
 Proof of work for [github.com/struckoff/sfcframework](http://github.com/struckoff/sfcframework)
 
 Distributed key-value storage of geo data. It uses longitude and latitude extracted from key to find appropriate node on the space-filling curve. 
