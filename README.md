@@ -1,3 +1,6 @@
+![Go](https://github.com/struckoff/kvstore/workflows/Go/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/struckoff/kvstore)](https://goreportcard.com/report/github.com/struckoff/kvstore)
+
 # KV Store
 
 ## Descriptor
@@ -131,6 +134,7 @@ Provides gRPC interface for bbolt DB to store data at the local file system.
 Configuration is also possible with environment variables.
 
 #### Example
+```sh
 KVSTORE_NAME=node-0
 KVSTORE_MODE=kvrouter
 KVSTORE_CAPACITY=1500
@@ -141,4 +145,4 @@ KVSTORE_GEO_LONGITUDE=-180
 KVSTORE_GEO_LATITUDE=-90
 KVSTORE_RPC_LATENCY=150ms
 KVSTORE_DBPATH=/var/lib/kvstore/data/node-0/data.db
-
+```
