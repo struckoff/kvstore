@@ -28,7 +28,7 @@ Get list of nodes.
 POST /put/:key
 ```
 
-####Example
+#### Example
 ```zsh
 echo "test-data" | http POST ":9190/put/{\"Lon\":-4,\"Lat\":-20}"      
 HTTP/1.1 200 OK
@@ -44,7 +44,7 @@ Store binary data by given key.
 ```
 GET /get/:keys
 ```
-####Example
+#### Example
 ```zsh
 http GET ":9190/get/{\"Lon\":-4,\"Lat\":-20}"
         
